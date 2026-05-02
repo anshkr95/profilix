@@ -697,6 +697,8 @@ function updateChart() {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   const textColor = isLight ? '#1a1525' : '#f0f0f5';
 
+  const isMobile = window.innerWidth <= 768;
+
   chartInstance = new Chart(ctx, {
     type: 'doughnut',
     data: {
@@ -720,7 +722,7 @@ function updateChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          position: 'right',
+          position: isMobile ? 'bottom' : 'right',
           labels: { color: textColor, font: { family: 'Outfit', size: 14 } }
         },
         title: {
