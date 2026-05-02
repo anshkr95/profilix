@@ -1113,6 +1113,12 @@ body {
   .dashboard-row { flex-direction: column; }
   .chart-container { min-width: 0; width: 100%; padding: 1rem; height: 280px; }
   .controls-container { min-width: 0; width: 100%; }
+  .workflow-grid { gap: 2.5rem; margin-top: 2.5rem; }
+  .funnel-layer { font-size: 0.75rem; letter-spacing: 0.5px; height: auto; min-height: 55px; padding: 10px 15px; text-align: center; line-height: 1.3; }
+  .funnel-1 { width: 100%; }
+  .funnel-2 { width: 95%; }
+  .funnel-3 { width: 90%; }
+  .funnel-4 { width: 85%; }
   .footer-complex { padding: 3rem 1.5rem 2rem; }
   .footer-complex-inner { gap: 2rem; }
 }
