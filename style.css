@@ -1097,7 +1097,22 @@ body {
 }
 
 @media (max-width: 768px) {
-  .hero-title { font-size: 3rem; }
-  .tabs-header { flex-direction: column; align-items: flex-start; }
-  .profile-card { flex-direction: column; align-items: flex-start; text-align: left; }
+  .navbar { padding: 0 1rem; }
+  .nav-links { gap: 1rem; }
+  .nav-logo { font-size: 1.2rem; }
+  .nav-link { font-size: 0.85rem; }
+  .hero-title { font-size: 2.5rem; }
+  .hero-sub { font-size: 1rem; }
+  .search-box { flex-direction: column; border-radius: var(--radius-sm); padding: 15px; }
+  .search-input { width: 100%; text-align: center; margin-bottom: 10px; }
+  .search-btn { width: 100%; }
+  .tabs-header { flex-direction: column; align-items: stretch; }
+  .tabs-row { flex-wrap: wrap; justify-content: center; }
+  .profile-card { flex-direction: column; align-items: center; text-align: center; padding: 1.5rem; }
+  .profile-stats { justify-content: center; gap: 1.5rem; }
+  .dashboard-row { flex-direction: column; }
+  .chart-container { min-width: 0; width: 100%; padding: 1rem; height: 280px; }
+  .controls-container { min-width: 0; width: 100%; }
+  .footer-complex { padding: 3rem 1.5rem 2rem; }
+  .footer-complex-inner { gap: 2rem; }
 }
