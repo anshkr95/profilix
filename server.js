@@ -22,7 +22,9 @@ app.get('/api/reddit/*', async (req, res) => {
     // We use curl instead of node-fetch to bypass Reddit's strict TLS fingerprinting
     // which blocks Node.js HTTP requests with a 403 Forbidden.
     const curlCommand = process.platform === 'win32' ? 'curl.exe' : 'curl';
-    execFile(curlCommand, ['-s', '-A', 'Profilix/2.0', redditUrl], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+    
+    execFile(curlCommand, ['-s', '-A', userAgent, '-H', 'Accept: application/json', '-H', 'Accept-Language: en-US,en;q=0.9', redditUrl], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
       if (error) {
         console.error('Curl exec error:', error.message);
         return res.status(500).json({ error: 'Curl error' });
