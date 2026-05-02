@@ -23,12 +23,33 @@ async function redditFetch(redditUrl) {
   const query = urlObj.search; // e.g. ?limit=25&after=...
   const localUrl = `/api/reddit${pathname}${query}`;
 
-  const res = await fetch(localUrl);
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
+  // Try Local Server Proxy first (fastest, but might be blocked by Reddit on Render)
+  try {
+    const res = await fetch(localUrl);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn("Local proxy fetch failed, falling back to public CORS proxies...");
   }
-  return res.json();
+
+  // Fallback 1: corsproxy.io
+  try {
+    const corsUrl = `https://corsproxy.io/?${encodeURIComponent(redditUrl)}`;
+    const res2 = await fetch(corsUrl);
+    if (res2.ok) {
+      return await res2.json();
+    }
+  } catch (e) {}
+
+  // Fallback 2: allorigins.win
+  const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(redditUrl)}`;
+  const res3 = await fetch(allOriginsUrl);
+  if (!res3.ok) {
+    const err = await res3.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res3.status}`);
+  }
+  return res3.json();
 }
 
 const PAGE_SIZE = 100;
