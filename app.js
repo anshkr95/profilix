@@ -15,42 +15,41 @@ const state = {
 // Our Express server at /api/reddit/* proxies Reddit server-side,
 // completely avoiding any browser CORS issues.
 async function redditFetch(redditUrl) {
-  // Use JSONP to bypass CORS entirely from the client's browser!
-  // This uses the user's home IP address, completely avoiding Render's cloud IP block.
-  return new Promise((resolve, reject) => {
-    const callbackName = 'reddit_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-    
-    // Create a global callback function
-    window[callbackName] = function(data) {
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      resolve(data);
-    };
+  // Convert https://www.reddit.com/user/X/about.json
+  // to /api/reddit/user/X/about
+  const urlObj = new URL(redditUrl);
+  let pathname = urlObj.pathname; // e.g. /user/spez/about.json
+  pathname = pathname.replace(/\.json$/, ''); // strip .json — server adds it
+  const query = urlObj.search; // e.g. ?limit=25&after=...
+  const localUrl = `/api/reddit${pathname}${query}`;
 
-    const script = document.createElement('script');
-    const urlObj = new URL(redditUrl);
-    // Add the jsonp parameter that Reddit API natively supports
-    urlObj.searchParams.set('jsonp', callbackName);
-    
-    script.src = urlObj.toString();
-    
-    script.onerror = function() {
-      delete window[callbackName];
-      if (script.parentNode) script.parentNode.removeChild(script);
-      reject(new Error('Reddit fetch failed (Network or Blocked)'));
-    };
-    
-    // Fallback timeout in case Reddit silently drops it
-    setTimeout(() => {
-      if (window[callbackName]) {
-        delete window[callbackName];
-        if (script.parentNode) script.parentNode.removeChild(script);
-        reject(new Error('Reddit fetch timeout'));
-      }
-    }, 10000);
+  // Try Local Server Proxy first (fastest, but might be blocked by Reddit on Render)
+  try {
+    const res = await fetch(localUrl);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn("Local proxy fetch failed, falling back to public CORS proxies...");
+  }
 
-    document.body.appendChild(script);
-  });
+  // Fallback 1: corsproxy.io
+  try {
+    const corsUrl = `https://corsproxy.io/?${encodeURIComponent(redditUrl)}`;
+    const res2 = await fetch(corsUrl);
+    if (res2.ok) {
+      return await res2.json();
+    }
+  } catch (e) {}
+
+  // Fallback 2: allorigins.win
+  const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(redditUrl)}`;
+  const res3 = await fetch(allOriginsUrl);
+  if (!res3.ok) {
+    const err = await res3.json().catch(() => ({}));
+    throw new Error(err.error || `HTTP ${res3.status}`);
+  }
+  return res3.json();
 }
 
 const PAGE_SIZE = 100;
