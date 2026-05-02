@@ -1,6 +1,6 @@
 <div align="center">
 
-![Profilix Banner](file:///C:/Users/anshh/.gemini/antigravity/brain/50935758-7be4-4d46-a15a-6c6658cb8dbb/profilix_banner_1777734405985.png)
+![Profilix Banner](./banner.png)
 
 # Profilix
 
@@ -10,6 +10,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express.js-4.x-lightgrey.svg)](https://expressjs.com/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Vibe Coded](https://img.shields.io/badge/Vibe_Coded-%E2%9C%A8-ff69b4.svg)](#)
 
 </div>
 
