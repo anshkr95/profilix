@@ -1,57 +1,81 @@
-# Profilix 🚀
-**Next-Gen Reddit Profile Analyzer**
+<div align="center">
 
-Profilix is a multi-layered intelligence dashboard for inspecting public Reddit footprints. It aggregates live data, archival snapshots, and dynamic analytics into a premium, responsive interface.
+![Profilix Banner](file:///C:/Users/anshh/.gemini/antigravity/brain/50935758-7be4-4d46-a15a-6c6658cb8dbb/profilix_banner_1777734405985.png)
 
-## 🌟 Features
-- **Ultra-Fast Scan**: Retrieve an entire user's public post and comment history in milliseconds.
-- **Deep-Layer Aggregation (Hidden Content)**: Utilizing historical archives (like PullPush) to uncover content that may have been deleted or removed from the live site.
-- **Visual Analytics**: Interactive charts to visualize a user's subreddit activity and posting behavior.
-- **Export to CSV**: Download organized data directly to your machine.
-- **Privacy First**: Fully anonymous scanning. No login required. 
+# Profilix
 
-## 🛠️ Tech Stack
-- **Frontend**: HTML5, CSS3 (Custom Glassmorphism & Animations), Vanilla JavaScript.
-- **Backend**: Node.js, Express.js.
-- **Data Sources**: Reddit JSON APIs, PullPush Archival APIs, TrackTheirProfile API proxy.
-- **Visualization**: Chart.js.
+**A modern dashboard for public Reddit profile analytics and data aggregation.**
 
-## 🚀 How to Run Locally
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express.js-4.x-lightgrey.svg)](https://expressjs.com/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+
+</div>
+
+## Overview
+
+Profilix is a web application designed to help you aggregate and analyze public Reddit activity. It retrieves data from Reddit's official public API endpoints as well as third-party historical archives to present a comprehensive, organized timeline of a user's digital footprint.
+
+Whether you are looking to review your own post history, gather structured analytics, or export public data to a CSV for research, Profilix provides a seamless, privacy-first interface.
+
+## Features
+
+- **Profile Aggregation:** View a target user's public posts and comments in one unified feed.
+- **Historical Archives:** Integrates with third-party archival APIs to retrieve historical public data.
+- **Interactive Analytics:** Generates dynamic charts summarizing subreddit activity patterns.
+- **Data Export:** Download structured timeline data directly as a CSV file.
+- **Responsive Design:** A polished dark-mode interface built for both desktop and mobile screens.
+- **Privacy First:** All requests are handled locally or via server proxies. No login is required.
+
+## Tech Stack
+
+- **Frontend:** HTML5, Vanilla CSS, Vanilla JavaScript
+- **Backend:** Node.js, Express.js (for secure cross-origin requests)
+- **Visualization:** Chart.js
+
+## Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) installed on your system.
+
+You need [Node.js](https://nodejs.org/) installed on your machine.
 
 ### Installation
-1. Clone the repository:
+
+1. Clone this repository:
    ```bash
-   git clone <your-repo-url>
+   git clone https://github.com/yourusername/profilix.git
    cd profilix
    ```
-2. Install dependencies:
+2. Install the necessary dependencies:
    ```bash
    npm install
    ```
-3. Start the server:
+3. Start the application server:
    ```bash
    npm start
    ```
-4. Open `http://localhost:3000` in your browser.
+4. Open your browser and navigate to `http://localhost:3000`.
 
-## ☁️ How to Host for Free
+## Deployment
 
-Since this project uses a Node.js backend to securely proxy requests, it requires a Node.js hosting environment. **Render** is an excellent free option.
+Profilix is designed to be easily hosted on platforms like Render, Railway, or Heroku. 
 
-1. Create a free account on [Render.com](https://render.com/).
-2. Click **New +** and select **Web Service**.
-3. Connect your GitHub account and select your `profilix` repository.
-4. Use the following settings:
-   - **Environment**: `Node`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-5. Click **Create Web Service**. Your app will be live within a few minutes!
+1. Create a **Web Service** on your preferred platform.
+2. Connect your GitHub repository.
+3. Set the Environment to `Node`.
+4. Build Command: `npm install`
+5. Start Command: `npm start`
 
-## ⚖️ Legal & Compliance
-**Profilix does not violate Reddit's Terms of Service.** 
-We do not bypass authentication, scrape private data, or access unauthorized endpoints. All data retrieved by Profilix is either publicly available via standard endpoints or legally archived by third-party historical databases. 
+## Legal and Compliance
 
-For more details, please refer to the `TERMS.md` and `PRIVACY.md` files.
+Profilix acts strictly as an aggregator of publicly accessible data. 
+
+- **Compliance:** We do not violate the terms of service of Reddit or any archival platforms. The tool does not bypass authentication, scrape private data, or access unauthorized endpoints.
+- **Liability:** The data presented is sourced from public APIs and third-party archives. Profilix provides this information "as is" and assumes no responsibility for its absolute accuracy.
+
+For more details, please review the included `TERMS.md` and `PRIVACY.md` files.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
