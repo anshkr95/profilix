@@ -729,7 +729,8 @@ function updateChart() {
           display: true,
           text: 'Top Subreddits Activity',
           color: textColor,
-          font: { family: 'Outfit', size: 16, weight: 'bold' }
+          font: { family: 'Outfit', size: 16, weight: 'bold' },
+          padding: { top: 10, bottom: 20 }
         }
       }
     }
