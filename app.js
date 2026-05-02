@@ -406,7 +406,8 @@ function renderItem(item, type, index) {
   const sub = item.subreddit || '';
   const time = timeAgo(item.created_utc);
   const score = formatNum(item.score || 0);
-  const link = `https://reddit.com${item.permalink}`;
+  const perm = item.permalink || '';
+  const link = perm.startsWith('http') ? perm : `https://reddit.com${perm}`;
   
   const isHidden = item._is_archive_only || item.author === '[deleted]' || item.removed_by_category;
   const hiddenBadge = isHidden ? `<span class="item-flair hidden-badge">👻 Hidden/Deleted</span>` : '';
@@ -596,7 +597,8 @@ function exportCSV() {
       const title = `"${(i.title || '').replace(/"/g, '""')}"`;
       const score = i.score || 0;
       const comments = i.num_comments || 0;
-      const link = `https://reddit.com${i.permalink || ''}`;
+      const perm = i.permalink || '';
+      const link = perm.startsWith('http') ? perm : `https://reddit.com${perm}`;
       const isHidden = (i._is_archive_only || i.author === '[deleted]' || i.removed_by_category) ? 'Yes' : 'No';
       csvContent += `${id},${date},${sub},${title},${score},${comments},${link},${isHidden}\n`;
     });
@@ -608,7 +610,8 @@ function exportCSV() {
       const sub = i.subreddit || '';
       const body = `"${(i.body || '').replace(/"/g, '""')}"`;
       const score = i.score || 0;
-      const link = `https://reddit.com${i.permalink || ''}`;
+      const perm = i.permalink || '';
+      const link = perm.startsWith('http') ? perm : `https://reddit.com${perm}`;
       const isHidden = (i._is_archive_only || i.author === '[deleted]' || i.removed_by_category) ? 'Yes' : 'No';
       csvContent += `${id},${date},${sub},${body},${score},${link},${isHidden}\n`;
     });
