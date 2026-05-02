@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profilix – Advanced Profile Analyzer</title>
+  <meta name="description" content="View any Reddit user's recent posts and comments instantly. Search by username and explore their activity." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <div class="logo-icon">✨</div>
+        <span class="logo-text">Profi<span class="logo-accent">lix</span></span>
+      </div>
+      <div class="nav-links">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle Theme" onclick="toggleTheme()">
+          <span class="theme-icon">🌙</span>
+        </button>
+        <a href="#home" class="nav-link">Home</a>
+        <a href="#features" class="nav-link">Features</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-bg">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="grid-overlay"></div>
+    </div>
+    <div class="hero-content">
+      <div class="badge">
+        <span class="badge-dot"></span>
+        Next-Gen Profiling Engine
+      </div>
+      <h1 class="hero-title">
+        Discover the <span class="title-glow">unseen</span>
+      </h1>
+      <p class="hero-sub">Deep-scan any Reddit user's digital footprint in milliseconds.</p>
+
+      <div class="search-card" id="search-card">
+        <div class="search-box" id="search-box">
+          <span class="search-icon">⚡</span>
+          <input
+            type="text"
+            id="username-input"
+            class="search-input"
+            placeholder="Enter a target username..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button class="search-btn" id="search-btn" onclick="searchUser()">Scan Profile</button>
+        </div>
+        <p class="search-hint">Try: spez &nbsp;·&nbsp; GovSchwarzenegger &nbsp;·&nbsp; thisismyusername99</p>
+      </div>
+    </div>
+
+    <div class="scroll-hint">
+      <div class="scroll-arrow"></div>
+    </div>
+  </section>
+
+  <!-- RESULTS -->
+  <section class="results-section" id="results-section" style="display:none">
+    <div class="results-container">
+
+      <!-- PROFILE CARD -->
+      <div class="profile-card" id="profile-card"></div>
+
+      <!-- TABS -->
+      <div class="tabs-header">
+        <div class="tabs-row" id="tabs-row">
+          <button class="tab-btn active" id="tab-posts" onclick="switchTab('posts')">
+            <span class="tab-icon">📝</span> Posts
+            <span class="tab-count" id="posts-count">0</span>
+          </button>
+          <button class="tab-btn" id="tab-comments" onclick="switchTab('comments')">
+            <span class="tab-icon">💬</span> Comments
+            <span class="tab-count" id="comments-count">0</span>
+          </button>
+        </div>
+        
+        <button class="export-btn" onclick="exportCSV()">
+          <span class="tab-icon">📥</span> Export CSV
+        </button>
+      </div>
+
+      <!-- DASHBOARD (Chart & Controls) -->
+      <div class="dashboard-row" id="dashboard-row" style="display:none;">
+        <div class="chart-container">
+          <canvas id="subredditChart"></canvas>
+        </div>
+        <div class="controls-container">
+          <select id="sort-select" class="sort-select" onchange="sortFeed()">
+            <option value="new">Sort: Newest</option>
+            <option value="old">Sort: Oldest</option>
+            <option value="top">Sort: Top Voted</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- LOCAL FILTER -->
+      <div class="local-filter-container" id="local-filter-container" style="display:none;">
+        <input type="text" id="local-filter" class="local-filter-input" placeholder="Filter by text, subreddit..." oninput="filterFeed()" />
+      </div>
+
+      <!-- FEED -->
+      <div class="feed" id="posts-feed"></div>
+      <div class="feed" id="comments-feed" style="display:none"></div>
+
+      <!-- LOAD MORE -->
+      <div class="load-more-row" id="load-more-row" style="display:none">
+        <button class="load-more-btn" id="load-more-btn" onclick="loadMore()">Load More Data</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- FEATURES SECTION -->
+  <section class="features-section" id="features">
+    <div class="features-inner">
+      <h2 class="section-title">Engine Capabilities</h2>
+      <p class="section-sub">Uncover deleted content and hidden footprints seamlessly.</p>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Ultra-Fast Scan</h3>
+          <p>Instantly retrieve their full history spanning across years, mapped beautifully.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👻</div>
+          <h3>Hidden Content</h3>
+          <p>Our multi-layer engine discovers posts even if they were deleted or removed.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Analytics</h3>
+          <p>Visualize user behavior with dynamic charts tracking subreddit activity.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🛡️</div>
+          <h3>Privacy First</h3>
+          <p>No login needed. Your scans are entirely anonymous and secure.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WORKFLOW SECTION -->
+  <section class="workflow-section" id="workflow">
+    <div class="workflow-inner">
+      <h2 class="section-title">How Profilix Works</h2>
+      <p class="section-sub">We organize public Reddit footprints into a structured view so you can inspect activity effortlessly.</p>
+      
+      <div class="workflow-grid">
+        <!-- Left: Steps -->
+        <div class="workflow-steps">
+          <div class="workflow-step active">
+            <h4>1. Topic & User Search</h4>
+            <p>Enter a target Reddit author. Our tool aggregates relevant public data from multiple live and archival sources.</p>
+          </div>
+          <div class="workflow-step">
+            <h4>2. Deep-Layer Aggregation</h4>
+            <p>We query Reddit's API, PullPush archives, and our proprietary Deep Cache simultaneously to find deleted content.</p>
+          </div>
+          <div class="workflow-step">
+            <h4>3. Analytics & Export</h4>
+            <p>Review the timeline, analyze subreddit activity via charts, and export the entire organized dataset to CSV.</p>
+          </div>
+        </div>
+
+        <!-- Right: Funnel -->
+        <div class="workflow-funnel">
+          <div class="funnel-layer funnel-1">
+            <span class="funnel-text">Multiple Archival Queries</span>
+          </div>
+          <div class="funnel-layer funnel-2">
+            <span class="funnel-text">Thousands of Data Points</span>
+          </div>
+          <div class="funnel-layer funnel-3">
+            <span class="funnel-text">Filtered Content</span>
+          </div>
+          <div class="funnel-layer funnel-4">
+            <span class="funnel-text">Structured Insights</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- COMPLEX FOOTER -->
+  <footer class="footer-complex">
+    <div class="footer-complex-inner">
+      
+      <!-- Brand -->
+      <div class="footer-brand">
+        <div class="footer-logo-large">
+          <span>✨</span> Profi<span class="logo-accent">lix</span>
+        </div>
+        <p class="brand-desc">Profilix helps you inspect any public Reddit profile, review post history, and spot patterns in milliseconds.</p>
+      </div>
+
+      <!-- Links -->
+      <div class="footer-links">
+        <h4>LINKS</h4>
+        <ul>
+          <li><a href="#" onclick="openModal('terms-modal'); return false;">Terms of Service</a></li>
+          <li><a href="#" onclick="openModal('privacy-modal'); return false;">Privacy Policy</a></li>
+        </ul>
+      </div>
+
+      <!-- Contact -->
+      <div class="footer-contact">
+        <h4>CONTACT SUPPORT</h4>
+        <p>Send us a message via WhatsApp</p>
+        <p>Email: <a href="mailto:support@profilix.com" class="email-link">support@profilix.com</a></p>
+        <form class="contact-form" onsubmit="event.preventDefault(); showToast('Message sent! We will get back to you soon.'); this.reset();">
+          <textarea placeholder="Type your message..." required></textarea>
+          <button type="submit" class="contact-submit">💬 Send Message</button>
+        </form>
+      </div>
+
+    </div>
+    <div class="footer-bottom">
+      &copy; 2026 Profilix. All rights reserved.
+    </div>
+  </footer>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" id="privacy-modal" onclick="closeModal(event, 'privacy-modal')">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal(null, 'privacy-modal')">&times;</span>
+      <h2>Privacy Policy</h2>
+      <div class="modal-body">
+        <p>At Profilix, we respect your privacy and the privacy of others.</p>
+        <h3>1. Data Collection</h3>
+        <p>We do not collect or store any personal data from our users. All searches are performed anonymously, and data is fetched directly from public sources and archives in real-time.</p>
+        <h3>2. Reddit API Compliance</h3>
+        <p>Profilix operates strictly within the bounds of public data aggregation. We <strong>do not violate Reddit's Terms of Service</strong>. We do not bypass authentication, scrape private data, or access unauthorized endpoints. The data we retrieve is strictly public information or information that was previously made public and legally archived by third-party services like PullPush.</p>
+        <h3>3. Data Retention</h3>
+        <p>We do not retain the data you search for. Once your browser session is closed, the fetched data is cleared.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="terms-modal" onclick="closeModal(event, 'terms-modal')">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeModal(null, 'terms-modal')">&times;</span>
+      <h2>Terms of Service</h2>
+      <div class="modal-body">
+        <p>Welcome to Profilix.</p>
+        <h3>1. Usage of Service</h3>
+        <p>By using Profilix, you agree to use the tool responsibly. You may not use this tool for harassment, doxxing, or any illegal activities.</p>
+        <h3>2. Public Information</h3>
+        <p>All information provided by Profilix is sourced from publicly accessible URLs and third-party historical archives. Profilix acts solely as an aggregator and search interface for existing public footprints. <strong>We do not breach Reddit's internal security or policies.</strong></p>
+        <h3>3. Liability</h3>
+        <p>Profilix provides data "as is" and cannot guarantee the absolute accuracy of third-party archival data.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCROLL TO TOP -->
+  <button id="scroll-top-btn" class="scroll-top-btn" onclick="scrollToTop()">↑</button>
+
+  <!-- LOADING OVERLAY -->
+  <div class="loading-overlay" id="loading-overlay" style="display:none">
+    <div class="loader-card">
+      <div class="spinner"></div>
+      <p class="loader-text" id="loader-text">Initializing scan…</p>
+    </div>
+  </div>
+
+  <!-- ERROR TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
