@@ -274,14 +274,6 @@ async function loadComments(username, reset = false) {
     if (redditRes.status === 'fulfilled' && redditRes.value.data) {
       let rData = redditRes.value.data;
 
-      // Fallback to Search API for comments
-      if ((!rData.children || rData.children.length === 0) && !state.redditCommentAfter) {
-        try {
-          const fallback = await redditFetch(`https://www.reddit.com/search.json?q=author:${username}&type=comment&sort=new&limit=${PAGE_SIZE}`);
-          if (fallback.data && fallback.data.children) rData = fallback.data;
-        } catch (e) {}
-      }
-
       state.redditCommentAfter = rData.after || null;
       newRedditItems.push(...(rData.children || []).map(c => c.data));
     } else { state.redditCommentAfter = null; }
