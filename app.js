@@ -13,19 +13,30 @@ const state = {
 // Our Express server at /api/reddit/* proxies Reddit server-side,
 // completely avoiding any browser CORS issues.
 async function redditFetch(redditUrl) {
-  // RedditGhost trick: api.reddit.com allows direct CORS requests from the browser!
-  const directUrl = redditUrl.replace('www.reddit.com', 'api.reddit.com').replace('.json', '');
-
+  // Try JSONP first: it natively bypasses CORS and utilizes the client's own IP
+  // This avoids situations where the server/proxy IP is rate-limited or blocked.
   try {
-    const res = await fetch(directUrl);
-    if (res.ok) {
-      return await res.json();
-    }
+    return await new Promise((resolve, reject) => {
+      const cbName = 'reddit_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+      window[cbName] = (data) => {
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        resolve(data);
+      };
+      const script = document.createElement('script');
+      script.src = redditUrl + (redditUrl.includes('?') ? '&' : '?') + 'jsonp=' + cbName;
+      script.onerror = () => {
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+        reject(new Error('JSONP failed'));
+      };
+      document.head.appendChild(script);
+    });
   } catch (e) {
-    console.warn("Direct api.reddit.com fetch failed, falling back to local proxy...", e);
+    console.warn("JSONP fetch failed, falling back to local proxy...", e);
   }
 
-  // Fallback to our local proxy (bypasses WAF blocks via curl)
+  // Fallback to our local proxy (bypasses WAF blocks via curl server-side)
   const urlObj = new URL(redditUrl);
   let pathname = urlObj.pathname.replace(/\.json$/, '');
   const localUrl = `/api/reddit${pathname}${urlObj.search}`;
@@ -39,13 +50,7 @@ async function redditFetch(redditUrl) {
     console.warn("Local proxy fetch failed.", e);
   }
 
-  // Final fallback: allorigins
-  const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(redditUrl)}`;
-  const res3 = await fetch(allOriginsUrl);
-  if (!res3.ok) {
-    throw new Error(`HTTP ${res3.status}`);
-  }
-  return res3.json();
+  throw new Error("Reddit fetch failed completely.");
 }
 
 const PAGE_SIZE = 100;
