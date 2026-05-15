@@ -4,9 +4,7 @@ const state = {
   allPosts: [],
   allComments: [],
   redditPostAfter: null,
-  pullpushPostAfter: null,
   redditCommentAfter: null,
-  pullpushCommentAfter: null,
   currentTab: 'posts',
   loading: false,
 };
@@ -15,39 +13,37 @@ const state = {
 // Our Express server at /api/reddit/* proxies Reddit server-side,
 // completely avoiding any browser CORS issues.
 async function redditFetch(redditUrl) {
-  // Convert https://www.reddit.com/user/X/about.json
-  // to /api/reddit/user/X/about
-  const urlObj = new URL(redditUrl);
-  let pathname = urlObj.pathname; // e.g. /user/spez/about.json
-  pathname = pathname.replace(/\.json$/, ''); // strip .json — server adds it
-  const query = urlObj.search; // e.g. ?limit=25&after=...
-  const localUrl = `/api/reddit${pathname}${query}`;
+  // RedditGhost trick: api.reddit.com allows direct CORS requests from the browser!
+  const directUrl = redditUrl.replace('www.reddit.com', 'api.reddit.com').replace('.json', '');
 
-  // Try Local Server Proxy first (fastest, but might be blocked by Reddit on Render)
   try {
-    const res = await fetch(localUrl);
+    const res = await fetch(directUrl);
     if (res.ok) {
       return await res.json();
     }
   } catch (e) {
-    console.warn("Local proxy fetch failed, falling back to public CORS proxies...");
+    console.warn("Direct api.reddit.com fetch failed, falling back to local proxy...", e);
   }
 
-  // Fallback 1: corsproxy.io
+  // Fallback to our local proxy (bypasses WAF blocks via curl)
+  const urlObj = new URL(redditUrl);
+  let pathname = urlObj.pathname.replace(/\.json$/, '');
+  const localUrl = `/api/reddit${pathname}${urlObj.search}`;
+  
   try {
-    const corsUrl = `https://corsproxy.io/?${encodeURIComponent(redditUrl)}`;
-    const res2 = await fetch(corsUrl);
+    const res2 = await fetch(localUrl);
     if (res2.ok) {
       return await res2.json();
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn("Local proxy fetch failed.", e);
+  }
 
-  // Fallback 2: allorigins.win
+  // Final fallback: allorigins
   const allOriginsUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(redditUrl)}`;
   const res3 = await fetch(allOriginsUrl);
   if (!res3.ok) {
-    const err = await res3.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res3.status}`);
+    throw new Error(`HTTP ${res3.status}`);
   }
   return res3.json();
 }
@@ -112,9 +108,7 @@ async function searchUser() {
   state.allPosts = [];
   state.allComments = [];
   state.redditPostAfter = null;
-  state.pullpushPostAfter = null;
   state.redditCommentAfter = null;
-  state.pullpushCommentAfter = null;
   state.currentTab = 'posts';
   state.loading = true;
 
@@ -176,22 +170,14 @@ async function searchUser() {
 /* ===== FETCH POSTS ===== */
 async function loadPosts(username, reset = false) {
   let redditUrl = `https://www.reddit.com/user/${username}/submitted.json?limit=${PAGE_SIZE}${state.redditPostAfter ? '&after=' + state.redditPostAfter : ''}`;
-  let pullpushUrl = `https://api.pullpush.io/reddit/search/submission/?author=${username}&size=${PAGE_SIZE}&sort=desc`;
-  if (state.pullpushPostAfter) {
-    pullpushUrl += `&before=${state.pullpushPostAfter}`;
-  }
   
   let newRedditItems = [];
-  let newArchiveItems = [];
 
   try {
-    const [redditRes, pullpushRes] = await Promise.allSettled([
-      redditFetch(redditUrl),
-      fetch(pullpushUrl).then(r => r.ok ? r.json() : {data:[]})
-    ]);
+    const redditRes = await redditFetch(redditUrl);
 
-    if (redditRes.status === 'fulfilled' && redditRes.value.data) {
-      let rData = redditRes.value.data;
+    if (redditRes && redditRes.data) {
+      let rData = redditRes.data;
       
       // Fallback: If Reddit blocks the user profile API (returns 0 items)
       // we can often bypass this by using Reddit's Search API instead.
@@ -206,26 +192,6 @@ async function loadPosts(username, reset = false) {
       newRedditItems.push(...(rData.children || []).map(c => c.data));
     } else { state.redditPostAfter = null; }
 
-    if (pullpushRes.status === 'fulfilled' && pullpushRes.value.data) {
-      const pItems = pullpushRes.value.data || [];
-      if (pItems.length > 0) state.pullpushPostAfter = pItems[pItems.length - 1].created_utc;
-      else state.pullpushPostAfter = null;
-      newArchiveItems.push(...pItems);
-    } else { state.pullpushPostAfter = null; }
-
-    // ULTIMATE FALLBACK: TrackTheirProfile API
-    if (newRedditItems.length === 0 && newArchiveItems.length === 0 && !state.redditPostAfter && !state.pullpushPostAfter) {
-      try {
-        const ttpRes = await fetch(`/api/tracktheirprofile/${username}`);
-        if (ttpRes.ok) {
-          const ttpData = await ttpRes.json();
-          if (ttpData.posts && ttpData.posts.length > 0) {
-            newArchiveItems.push(...ttpData.posts);
-          }
-        }
-      } catch(e) {}
-    }
-
   } catch (e) {
     console.warn('Posts fetch error:', e);
   }
@@ -238,71 +204,28 @@ async function loadPosts(username, reset = false) {
     i._is_live = true;
     map.set(i.id, i);
   });
-  
-  newArchiveItems.forEach(i => {
-    if (map.has(i.id)) {
-      map.get(i.id)._is_live = true;
-    } else {
-      i._is_archive_only = true;
-      map.set(i.id, i);
-    }
-  });
 
   state.allPosts = Array.from(map.values()).sort((a, b) => b.created_utc - a.created_utc);
 
   renderFeed('posts');
-  document.getElementById('posts-count').textContent = state.allPosts.length + ((state.redditPostAfter || state.pullpushPostAfter) ? '+' : '');
+  document.getElementById('posts-count').textContent = state.allPosts.length + (state.redditPostAfter ? '+' : '');
 }
 
 /* ===== FETCH COMMENTS ===== */
 async function loadComments(username, reset = false) {
   let redditUrl = `https://www.reddit.com/user/${username}/comments.json?limit=${PAGE_SIZE}${state.redditCommentAfter ? '&after=' + state.redditCommentAfter : ''}`;
-  let pullpushUrl = `https://api.pullpush.io/reddit/search/comment/?author=${username}&size=${PAGE_SIZE}&sort=desc`;
-  if (state.pullpushCommentAfter) {
-    pullpushUrl += `&before=${state.pullpushCommentAfter}`;
-  }
   
   let newRedditItems = [];
-  let newArchiveItems = [];
 
   try {
-    const [redditRes, pullpushRes] = await Promise.allSettled([
-      redditFetch(redditUrl),
-      fetch(pullpushUrl).then(r => r.ok ? r.json() : {data:[]})
-    ]);
+    const redditRes = await redditFetch(redditUrl);
 
-    if (redditRes.status === 'fulfilled' && redditRes.value.data) {
-      let rData = redditRes.value.data;
+    if (redditRes && redditRes.data) {
+      let rData = redditRes.data;
 
       state.redditCommentAfter = rData.after || null;
       newRedditItems.push(...(rData.children || []).map(c => c.data));
     } else { state.redditCommentAfter = null; }
-
-    if (pullpushRes.status === 'fulfilled' && pullpushRes.value.data) {
-      const pItems = pullpushRes.value.data || [];
-      if (pItems.length > 0) state.pullpushCommentAfter = pItems[pItems.length - 1].created_utc;
-      else state.pullpushCommentAfter = null;
-      newArchiveItems.push(...pItems);
-    } else { state.pullpushCommentAfter = null; }
-
-    // ULTIMATE FALLBACK: TrackTheirProfile API
-    if (newRedditItems.length === 0 && newArchiveItems.length === 0 && !state.redditCommentAfter && !state.pullpushCommentAfter) {
-      try {
-        const ttpRes = await fetch(`/api/tracktheirprofile/${username}`);
-        if (ttpRes.ok) {
-          const ttpData = await ttpRes.json();
-          if (ttpData.comments && ttpData.comments.length > 0) {
-            // TrackTheirProfile returns comments without permalink sometimes, we can construct it or just use the thread link
-            const mappedComments = ttpData.comments.map(c => ({
-              ...c,
-              permalink: c.permalink || c.link_permalink || `/r/${c.subreddit}/comments/`,
-              link_title: c.link_title || ''
-            }));
-            newArchiveItems.push(...mappedComments);
-          }
-        }
-      } catch(e) {}
-    }
 
   } catch (e) {
     console.warn('Comments fetch error:', e);
@@ -316,20 +239,11 @@ async function loadComments(username, reset = false) {
     i._is_live = true;
     map.set(i.id, i);
   });
-  
-  newArchiveItems.forEach(i => {
-    if (map.has(i.id)) {
-      map.get(i.id)._is_live = true;
-    } else {
-      i._is_archive_only = true;
-      map.set(i.id, i);
-    }
-  });
 
   state.allComments = Array.from(map.values()).sort((a, b) => b.created_utc - a.created_utc);
 
   renderFeed('comments');
-  document.getElementById('comments-count').textContent = state.allComments.length + ((state.redditCommentAfter || state.pullpushCommentAfter) ? '+' : '');
+  document.getElementById('comments-count').textContent = state.allComments.length + (state.redditCommentAfter ? '+' : '');
 }
 
 /* ===== RENDER PROFILE ===== */
@@ -497,8 +411,8 @@ function switchTab(tab) {
 function updateLoadMoreBtn() {
   const row = document.getElementById('load-more-row');
   const hasMore = state.currentTab === 'posts' 
-    ? (!!state.redditPostAfter || !!state.pullpushPostAfter) 
-    : (!!state.redditCommentAfter || !!state.pullpushCommentAfter);
+    ? !!state.redditPostAfter 
+    : !!state.redditCommentAfter;
   row.style.display = hasMore ? 'flex' : 'none';
 }
 

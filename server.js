@@ -1,6 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
+const { execFile } = require('child_process');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -8,19 +9,39 @@ const PORT = process.env.PORT || 3000;
 // Serve static files (our HTML/CSS/JS)
 app.use(express.static(path.join(__dirname)));
 
+// Stub for KV store ping to avoid 404s
+app.post('/api/reddit/user/:username/kv-store', (req, res) => res.json({}));
+app.get('/api/reddit/user/:username/kv-store', (req, res) => res.json({}));
+
+// Proxy for Reddit videos (avoid CORS issues with HLS/MP4)
+app.get('/api/reddit/video-proxy', async (req, res) => {
+  const videoUrl = req.query.url;
+  if (!videoUrl) return res.status(400).send('Missing url');
+  try {
+    const response = await fetch(videoUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Content-Type', response.headers.get('content-type') || 'video/mp4');
+    response.body.pipe(res);
+  } catch (err) {
+    res.status(500).send('Proxy error');
+  }
+});
+
+
+
 // Reddit API proxy — avoids CORS entirely since this runs server-side
 app.get('/api/reddit/*', async (req, res) => {
   // Strip /api/reddit prefix to get the actual Reddit path
   const redditPath = req.params[0];
   const query = req.url.split('?')[1] ? '?' + req.url.split('?')[1] : '';
-
-  const redditUrl = `https://www.reddit.com/${redditPath}.json${query}`;
-
-  const { execFile } = require('child_process');
+  const redditUrl = `https://www.reddit.com/${redditPath}${redditPath.endsWith('.json') ? '' : '.json'}${query}`;
 
   try {
     // We use curl instead of node-fetch to bypass Reddit's strict TLS fingerprinting
-    // which blocks Node.js HTTP requests with a 403 Forbidden.
     const curlCommand = process.platform === 'win32' ? 'curl.exe' : 'curl';
     const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
     
@@ -33,34 +54,14 @@ app.get('/api/reddit/*', async (req, res) => {
         const data = JSON.parse(stdout);
         res.json(data);
       } catch (parseErr) {
-        res.status(500).json({ error: 'Invalid JSON from Reddit' });
+        // Fallback for when Reddit sends a string or HTML instead of JSON
+        res.status(500).json({ error: 'Invalid JSON from Reddit', fallback: true });
       }
     });
 
   } catch (err) {
     console.error('Proxy error:', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// TrackTheirProfile API proxy (Ultimate fallback)
-app.get('/api/tracktheirprofile/:username', async (req, res) => {
-  const username = req.params.username;
-  try {
-    const response = await fetch(`https://tracktheirprofile.com/api/search?username=${encodeURIComponent(username)}`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        'Accept': 'application/json',
-      },
-      timeout: 10000,
-    });
-    if (!response.ok) {
-      return res.status(response.status).json({ error: `TTP API error: ${response.status}` });
-    }
-    const data = await response.json();
-    res.json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, fallback: true });
   }
 });
 
