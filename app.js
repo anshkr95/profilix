@@ -1,4 +1,3 @@
-/* ===== STATE ===== */
 const state = {
   username: '',
   allPosts: [],
@@ -7,6 +6,8 @@ const state = {
   redditCommentAfter: null,
   currentTab: 'posts',
   loading: false,
+  useSearchForPosts: false,
+  usePullpushForComments: false
 };
 
 /* ===== REDDIT API via LOCAL PROXY ===== */
@@ -114,6 +115,8 @@ async function searchUser() {
   state.allComments = [];
   state.redditPostAfter = null;
   state.redditCommentAfter = null;
+  state.useSearchForPosts = false;
+  state.usePullpushForComments = false;
   state.currentTab = 'posts';
   state.loading = true;
 
@@ -174,28 +177,42 @@ async function searchUser() {
 
 /* ===== FETCH POSTS ===== */
 async function loadPosts(username, reset = false) {
+  if (reset) state.useSearchForPosts = false;
+
   let redditUrl = `https://www.reddit.com/user/${username}/submitted.json?limit=${PAGE_SIZE}${state.redditPostAfter ? '&after=' + state.redditPostAfter : ''}`;
+  if (state.useSearchForPosts) {
+    redditUrl = `https://www.reddit.com/search.json?q=author:${username}&type=link&sort=new&limit=${PAGE_SIZE}${state.redditPostAfter ? '&after=' + state.redditPostAfter : ''}`;
+  }
   
   let newRedditItems = [];
 
   try {
-    const redditRes = await redditFetch(redditUrl);
+    let redditRes = null;
+    try {
+      redditRes = await redditFetch(redditUrl);
+    } catch (e) {
+      console.warn('Primary posts fetch failed, attempting fallback...', e);
+    }
 
-    if (redditRes && redditRes.data) {
-      let rData = redditRes.data;
+    let rData = redditRes && redditRes.data ? redditRes.data : { children: [] };
       
-      // Fallback: If Reddit blocks the user profile API (returns 0 items)
-      // we can often bypass this by using Reddit's Search API instead.
-      if ((!rData.children || rData.children.length === 0) && !state.redditPostAfter) {
-        try {
-          const fallback = await redditFetch(`https://www.reddit.com/search.json?q=author:${username}&type=link&sort=new&limit=${PAGE_SIZE}`);
-          if (fallback.data && fallback.data.children) rData = fallback.data;
-        } catch (e) {}
+    // Fallback: If Reddit blocks the user profile API (returns 0 items)
+    // we can often bypass this by using Reddit's Search API instead.
+    if ((!rData.children || rData.children.length === 0) && !state.redditPostAfter && !state.useSearchForPosts) {
+      try {
+        const fallbackUrl = `https://www.reddit.com/search.json?q=author:${username}&type=link&sort=new&limit=${PAGE_SIZE}`;
+        const fallback = await redditFetch(fallbackUrl);
+        if (fallback && fallback.data && fallback.data.children && fallback.data.children.length > 0) {
+          rData = fallback.data;
+          state.useSearchForPosts = true;
+        }
+      } catch (e) {
+        console.warn('Fallback posts fetch failed:', e);
       }
+    }
 
-      state.redditPostAfter = rData.after || null;
-      newRedditItems.push(...(rData.children || []).map(c => c.data));
-    } else { state.redditPostAfter = null; }
+    state.redditPostAfter = rData.after || null;
+    newRedditItems.push(...(rData.children || []).map(c => c.data));
 
   } catch (e) {
     console.warn('Posts fetch error:', e);
@@ -218,19 +235,62 @@ async function loadPosts(username, reset = false) {
 
 /* ===== FETCH COMMENTS ===== */
 async function loadComments(username, reset = false) {
+  if (reset) state.usePullpushForComments = false;
+
   let redditUrl = `https://www.reddit.com/user/${username}/comments.json?limit=${PAGE_SIZE}${state.redditCommentAfter ? '&after=' + state.redditCommentAfter : ''}`;
   
   let newRedditItems = [];
 
   try {
-    const redditRes = await redditFetch(redditUrl);
+    let redditRes = null;
+    if (!state.usePullpushForComments) {
+      try {
+        redditRes = await redditFetch(redditUrl);
+      } catch (e) {
+        console.warn('Primary comments fetch failed, attempting fallback...', e);
+      }
+    }
 
-    if (redditRes && redditRes.data) {
-      let rData = redditRes.data;
+    let rData = redditRes && redditRes.data ? redditRes.data : { children: [] };
 
-      state.redditCommentAfter = rData.after || null;
-      newRedditItems.push(...(rData.children || []).map(c => c.data));
-    } else { state.redditCommentAfter = null; }
+    // Fallback: Use Pullpush API if Reddit API fails to return comments
+    if ((!rData.children || rData.children.length === 0) && (!state.redditCommentAfter || state.usePullpushForComments)) {
+      try {
+        let ppUrl = `https://api.pullpush.io/reddit/search/comment/?author=${username}&limit=${PAGE_SIZE}`;
+        if (state.usePullpushForComments && state.redditCommentAfter) {
+          ppUrl += `&before=${state.redditCommentAfter}`;
+        }
+        
+        const pullpushRes = await fetch(ppUrl);
+        if (pullpushRes.ok) {
+          const pullpushData = await pullpushRes.json();
+          if (pullpushData && pullpushData.data && pullpushData.data.length > 0) {
+            state.usePullpushForComments = true;
+            rData.children = pullpushData.data.map(item => ({
+              data: {
+                id: item.id,
+                subreddit: item.subreddit,
+                created_utc: item.created_utc,
+                body: item.body,
+                score: item.score,
+                permalink: item.permalink || `/r/${item.subreddit}/comments/${item.link_id?.split('_')[1]}/_/${item.id}/`,
+                link_title: item.link_title || ''
+              }
+            }));
+            
+            // Set after to the created_utc of the last item for next page
+            rData.after = pullpushData.data[pullpushData.data.length - 1].created_utc;
+          } else {
+            rData.after = null;
+          }
+        }
+      } catch (e) {
+        console.warn('Pullpush fallback failed:', e);
+      }
+    }
+
+    state.redditCommentAfter = rData.after || null;
+    newRedditItems.push(...(rData.children || []).map(c => c.data));
 
   } catch (e) {
     console.warn('Comments fetch error:', e);
@@ -332,7 +392,7 @@ function renderItem(item, type, index) {
     const isLink = !item.is_self && !isImage;
 
     return `
-      <div class="feed-item" style="animation-delay:${delay}s" onclick="window.open('${link}','_blank')">
+      <div class="feed-item" data-subreddit="${escapeHtml(sub).toLowerCase()}" style="animation-delay:${delay}s" onclick="window.open('${link}','_blank')">
         <div class="item-header">
           <a class="item-sub" href="https://reddit.com/r/${escapeHtml(sub)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">r/${escapeHtml(sub)}</a>
           ${hiddenBadge}
@@ -356,7 +416,7 @@ function renderItem(item, type, index) {
     const context = item.link_title ? escapeHtml(item.link_title).substring(0, 80) : '';
 
     return `
-      <div class="feed-item" style="animation-delay:${delay}s" onclick="window.open('${link}','_blank')">
+      <div class="feed-item" data-subreddit="${escapeHtml(sub).toLowerCase()}" style="animation-delay:${delay}s" onclick="window.open('${link}','_blank')">
         <div class="item-header">
           <a class="item-sub" href="https://reddit.com/r/${escapeHtml(sub)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">r/${escapeHtml(sub)}</a>
           ${hiddenBadge}
@@ -392,12 +452,6 @@ function switchTab(tab) {
   const postBtn = document.getElementById('tab-posts');
   const commentBtn = document.getElementById('tab-comments');
 
-  // Clear filter and reset visibility
-  const filterInput = document.getElementById('local-filter');
-  if (filterInput) filterInput.value = '';
-  const allItems = document.querySelectorAll('.feed-item');
-  allItems.forEach(item => item.style.display = 'block');
-
   if (tab === 'posts') {
     postFeed.style.display = 'flex';
     commentFeed.style.display = 'none';
@@ -410,6 +464,11 @@ function switchTab(tab) {
     commentBtn.classList.add('active');
   }
   updateLoadMoreBtn();
+
+  // Re-apply filter instead of clearing it
+  if (typeof filterFeed === 'function') {
+    filterFeed();
+  }
 }
 
 /* ===== LOAD MORE ===== */
@@ -543,12 +602,23 @@ function filterFeed() {
   const query = document.getElementById('local-filter').value.toLowerCase();
   const type = state.currentTab;
   const feed = document.getElementById(`${type}-feed`);
+  if (!feed) return;
   const items = Array.from(feed.getElementsByClassName('feed-item'));
+
+  const isExactSub = query.startsWith('r/');
+  const targetSub = isExactSub ? query.substring(2).trim() : null;
 
   let visibleCount = 0;
   items.forEach(item => {
-    const text = item.innerText.toLowerCase();
-    if (text.includes(query)) {
+    let match = false;
+    if (isExactSub) {
+      match = item.getAttribute('data-subreddit') === targetSub;
+    } else {
+      const text = item.innerText.toLowerCase();
+      match = text.includes(query);
+    }
+    
+    if (match) {
       item.style.display = 'block';
       visibleCount++;
     } else {
@@ -634,6 +704,20 @@ function updateChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onClick: (e, elements) => {
+        if (elements && elements.length > 0) {
+          const index = elements[0].index;
+          const subLabel = chartInstance.data.labels[index];
+          const filterInput = document.getElementById('local-filter');
+          if (filterInput.value.toLowerCase() === subLabel.toLowerCase()) {
+            filterInput.value = ''; // Toggle off
+          } else {
+            filterInput.value = subLabel;
+          }
+          filterFeed();
+          document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      },
       plugins: {
         legend: {
           position: isMobile ? 'bottom' : 'right',
