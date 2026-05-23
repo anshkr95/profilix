@@ -8,7 +8,6 @@ const state = {
   pullpushCommentAfter: null,
   currentTab: 'posts',
   loading: false,
-  subredditFilter: null,
 };
 
 /* ===== REDDIT API via LOCAL PROXY ===== */
@@ -101,9 +100,6 @@ function setLoading(show, text = 'Fetching profile…') {
 document.getElementById('username-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') searchUser();
 });
-document.getElementById('subreddit-filter-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') searchUser();
-});
 
 /* ===== SEARCH ===== */
 async function searchUser() {
@@ -113,10 +109,6 @@ async function searchUser() {
   // strip u/ prefix
   const username = raw.replace(/^u\//, '').replace(/^\/u\//, '');
   if (!username) { showToast('Invalid username'); return; }
-
-  // Get and clean subreddit filter
-  const subRaw = document.getElementById('subreddit-filter-input').value.trim();
-  state.subredditFilter = subRaw.replace(/^r\//, '').replace(/^\/r\//, '').toLowerCase() || null;
 
   state.username = username;
   state.allPosts = [];
@@ -168,7 +160,7 @@ async function searchUser() {
     document.getElementById('results-section').style.display = 'block';
     document.getElementById('dashboard-row').style.display = 'flex';
     document.getElementById('local-filter-container').style.display = 'block';
-    document.getElementById('local-filter').value = state.subredditFilter ? 'r/' + state.subredditFilter : '';
+    document.getElementById('local-filter').value = '';
     document.getElementById('results-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     // Reset tab UI
@@ -195,9 +187,6 @@ async function loadPosts(username, reset = false) {
   
   // 2. Fetch search API posts from Arctic Shift via local proxy
   let searchUrl = state.searchPostAfter === 'END' ? null : `/api/arctic-shift/posts/search?author=${username}&limit=${PAGE_SIZE}`;
-  if (state.subredditFilter) {
-    searchUrl += `&subreddit=${state.subredditFilter}`;
-  }
   if (searchUrl && state.searchPostAfter) {
     searchUrl += `&before=${state.searchPostAfter}`;
   }
@@ -217,11 +206,7 @@ async function loadPosts(username, reset = false) {
         const { type, res } = result.value;
         if (type === 'live') {
           if (res && res.data) {
-            let items = (res.data.children || []).map(c => c.data);
-            if (state.subredditFilter) {
-              items = items.filter(item => item.subreddit?.toLowerCase() === state.subredditFilter);
-            }
-            liveItems = items;
+            liveItems = (res.data.children || []).map(c => c.data);
             state.redditPostAfter = res.data.after || 'END';
           } else {
             state.redditPostAfter = 'END';
@@ -242,8 +227,7 @@ async function loadPosts(username, reset = false) {
               post_hint: item.post_hint || '',
               is_self: item.is_self !== undefined ? item.is_self : !item.url,
               link_flair_text: item.link_flair_text || '',
-              removed_by_category: item.removed_by_category || null,
-              media: item.media || null
+              removed_by_category: item.removed_by_category || null
             }));
           } else {
             state.searchPostAfter = 'END';
@@ -290,9 +274,6 @@ async function loadComments(username, reset = false) {
   
   // 2. Fetch Arctic Shift comments via local proxy
   let asUrl = state.pullpushCommentAfter === 'END' ? null : `/api/arctic-shift/comments/search?author=${username}&limit=${PAGE_SIZE}`;
-  if (state.subredditFilter) {
-    asUrl += `&subreddit=${state.subredditFilter}`;
-  }
   if (asUrl && state.pullpushCommentAfter) {
     asUrl += `&before=${state.pullpushCommentAfter}`;
   }
@@ -313,11 +294,7 @@ async function loadComments(username, reset = false) {
         if (type === 'live') {
           if (res && res.data) {
             state.redditCommentAfter = res.data.after || 'END';
-            let items = (res.data.children || []).map(c => c.data);
-            if (state.subredditFilter) {
-              items = items.filter(item => item.subreddit?.toLowerCase() === state.subredditFilter);
-            }
-            liveItems = items;
+            liveItems = (res.data.children || []).map(c => c.data);
           } else {
             state.redditCommentAfter = 'END';
           }
@@ -454,32 +431,8 @@ function renderItem(item, type, index) {
     const title = escapeHtml(item.title || '');
     const selftext = item.selftext ? escapeHtml(item.selftext).substring(0, 240) : '';
     const flair = item.link_flair_text ? `<span class="item-flair">${escapeHtml(item.link_flair_text)}</span>` : '';
-    
     const isImage = item.post_hint === 'image' || (item.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(item.url));
-    const isVideo = item.is_video || (item.media && item.media.reddit_video);
-    const isLink = !item.is_self && !isImage && !isVideo;
-
-    let mediaHtml = '';
-    if (isImage) {
-      mediaHtml = `
-        <div class="item-media" onclick="event.stopPropagation()">
-          <img src="${escapeHtml(item.url)}" alt="Post image" class="post-media-img" loading="lazy" onclick="window.open('${escapeHtml(item.url)}', '_blank')" />
-        </div>`;
-    } else if (isVideo) {
-      let videoUrl = '';
-      if (item.media && item.media.reddit_video && item.media.reddit_video.fallback_url) {
-        videoUrl = item.media.reddit_video.fallback_url;
-      } else if (item.url) {
-        videoUrl = item.url;
-      }
-      if (videoUrl) {
-        const proxiedVideoUrl = `/api/reddit/video-proxy?url=${encodeURIComponent(videoUrl)}`;
-        mediaHtml = `
-          <div class="item-media" onclick="event.stopPropagation()">
-            <video src="${escapeHtml(proxiedVideoUrl)}" controls class="post-media-video" preload="metadata"></video>
-          </div>`;
-      }
-    }
+    const isLink = !item.is_self && !isImage;
 
     return `
       <div class="feed-item" data-subreddit="${escapeHtml(sub).toLowerCase()}" style="animation-delay:${delay}s" onclick="window.open('${link}','_blank')">
@@ -489,12 +442,10 @@ function renderItem(item, type, index) {
           ${flair}
           ${isLink ? `<span class="item-flair" style="background:rgba(0,229,160,0.1);color:var(--accent);">🔗 Link</span>` : ''}
           ${isImage ? `<span class="item-flair" style="background:rgba(255,107,53,0.1);color:var(--orange);">🖼️ Image</span>` : ''}
-          ${isVideo ? `<span class="item-flair" style="background:rgba(0,229,255,0.1);color:var(--cyan);">📹 Video</span>` : ''}
           <span class="item-time">${time}</span>
         </div>
         <div class="item-title">${title}</div>
         ${selftext ? `<div class="item-body">${selftext}${item.selftext.length > 240 ? '…' : ''}</div>` : ''}
-        ${mediaHtml}
         <div class="item-footer">
           <span class="item-stat upvote">⬆ ${score}</span>
           <span class="item-stat comments">💬 ${numComments}</span>
