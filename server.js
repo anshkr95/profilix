@@ -65,6 +65,29 @@ app.get('/api/reddit/*', async (req, res) => {
   }
 });
 
+// Proxy for Pullpush API to avoid browser CORS/adblocker issues
+app.get('/api/pullpush/*', async (req, res) => {
+  const pullpushPath = req.params[0];
+  const query = req.url.split('?')[1] ? '?' + req.url.split('?')[1] : '';
+  const ppUrl = `https://api.pullpush.io/${pullpushPath}${query}`;
+
+  const curlCommand = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+  execFile(curlCommand, ['-s', '-A', userAgent, '-H', 'Accept: application/json', '-H', 'Accept-Language: en-US,en;q=0.9', ppUrl], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Pullpush Curl error:', error.message);
+      return res.status(500).json({ error: 'Curl error' });
+    }
+    try {
+      const data = JSON.parse(stdout);
+      res.json(data);
+    } catch (parseErr) {
+      res.status(500).json({ error: 'Invalid JSON from Pullpush' });
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`\n🚀 Profilix running at http://localhost:${PORT}\n`);
 });

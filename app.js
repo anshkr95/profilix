@@ -254,8 +254,8 @@ async function loadComments(username, reset = false) {
   // 1. Fetch live profile comments
   let liveUrl = state.redditCommentAfter === 'END' ? null : `https://www.reddit.com/user/${username}/comments.json?limit=${PAGE_SIZE}${state.redditCommentAfter ? '&after=' + state.redditCommentAfter : ''}`;
   
-  // 2. Fetch pullpush comments
-  let ppUrl = state.pullpushCommentAfter === 'END' ? null : `https://api.pullpush.io/reddit/search/comment/?author=${username}&limit=${PAGE_SIZE}`;
+  // 2. Fetch pullpush comments via local proxy
+  let ppUrl = state.pullpushCommentAfter === 'END' ? null : `/api/pullpush/reddit/comment/search?author=${username}&limit=${PAGE_SIZE}`;
   if (ppUrl && state.pullpushCommentAfter) {
     ppUrl += `&before=${state.pullpushCommentAfter}`;
   }
