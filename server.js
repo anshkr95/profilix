@@ -88,6 +88,30 @@ app.get('/api/pullpush/*', async (req, res) => {
   });
 });
 
+// Proxy for Arctic Shift API to avoid browser CORS/adblocker issues
+app.get('/api/arctic-shift/*', async (req, res) => {
+  const asPath = req.params[0];
+  const query = req.url.split('?')[1] ? '?' + req.url.split('?')[1] : '';
+  const asUrl = `https://arctic-shift.photon-reddit.com/api/${asPath}${query}`;
+
+  const curlCommand = process.platform === 'win32' ? 'curl.exe' : 'curl';
+  const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+  execFile(curlCommand, ['-s', '-A', userAgent, '-H', 'Accept: application/json', '-H', 'Accept-Language: en-US,en;q=0.9', asUrl], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Arctic Shift Curl error:', error.message);
+      return res.status(500).json({ error: 'Curl error' });
+    }
+    try {
+      const data = JSON.parse(stdout);
+      res.json(data);
+    } catch (parseErr) {
+      res.status(500).json({ error: 'Invalid JSON from Arctic Shift' });
+    }
+  });
+});
+
+
 app.listen(PORT, () => {
   console.log(`\n🚀 Profilix running at http://localhost:${PORT}\n`);
 });

@@ -185,8 +185,11 @@ async function loadPosts(username, reset = false) {
   // 1. Fetch live profile posts
   let liveUrl = state.redditPostAfter === 'END' ? null : `https://www.reddit.com/user/${username}/submitted.json?limit=${PAGE_SIZE}${state.redditPostAfter ? '&after=' + state.redditPostAfter : ''}`;
   
-  // 2. Fetch search API posts
-  let searchUrl = state.searchPostAfter === 'END' ? null : `https://www.reddit.com/search.json?q=author:${username}&type=link&sort=new&limit=${PAGE_SIZE}${state.searchPostAfter ? '&after=' + state.searchPostAfter : ''}`;
+  // 2. Fetch search API posts from Arctic Shift via local proxy
+  let searchUrl = state.searchPostAfter === 'END' ? null : `/api/arctic-shift/posts/search?author=${username}&limit=${PAGE_SIZE}`;
+  if (searchUrl && state.searchPostAfter) {
+    searchUrl += `&before=${state.searchPostAfter}`;
+  }
 
   let liveItems = [];
   let searchItems = [];
@@ -194,26 +197,41 @@ async function loadPosts(username, reset = false) {
   try {
     const promises = [];
     if (liveUrl) promises.push(redditFetch(liveUrl).then(res => ({ type: 'live', res })));
-    if (searchUrl) promises.push(redditFetch(searchUrl).then(res => ({ type: 'search', res })));
+    if (searchUrl) promises.push(fetch(searchUrl).then(res => res.json()).then(res => ({ type: 'search', res })));
 
     const results = await Promise.allSettled(promises);
 
     results.forEach(result => {
       if (result.status === 'fulfilled') {
         const { type, res } = result.value;
-        if (res && res.data) {
-          const items = (res.data.children || []).map(c => c.data);
-          const after = res.data.after || 'END';
-          if (type === 'live') {
-            liveItems = items;
-            state.redditPostAfter = after;
+        if (type === 'live') {
+          if (res && res.data) {
+            liveItems = (res.data.children || []).map(c => c.data);
+            state.redditPostAfter = res.data.after || 'END';
           } else {
-            searchItems = items;
-            state.searchPostAfter = after;
+            state.redditPostAfter = 'END';
           }
-        } else {
-          if (type === 'live') state.redditPostAfter = 'END';
-          if (type === 'search') state.searchPostAfter = 'END';
+        } else if (type === 'search') {
+          if (res && res.data && res.data.length > 0) {
+            state.searchPostAfter = res.data[res.data.length - 1].created_utc;
+            searchItems = res.data.map(item => ({
+              id: item.id,
+              subreddit: item.subreddit,
+              created_utc: item.created_utc,
+              title: item.title,
+              selftext: item.selftext || '',
+              score: item.score,
+              num_comments: item.num_comments || 0,
+              permalink: item.permalink,
+              url: item.url || '',
+              post_hint: item.post_hint || '',
+              is_self: item.is_self !== undefined ? item.is_self : !item.url,
+              link_flair_text: item.link_flair_text || '',
+              removed_by_category: item.removed_by_category || null
+            }));
+          } else {
+            state.searchPostAfter = 'END';
+          }
         }
       }
     });
@@ -254,10 +272,10 @@ async function loadComments(username, reset = false) {
   // 1. Fetch live profile comments
   let liveUrl = state.redditCommentAfter === 'END' ? null : `https://www.reddit.com/user/${username}/comments.json?limit=${PAGE_SIZE}${state.redditCommentAfter ? '&after=' + state.redditCommentAfter : ''}`;
   
-  // 2. Fetch pullpush comments via local proxy
-  let ppUrl = state.pullpushCommentAfter === 'END' ? null : `/api/pullpush/reddit/comment/search?author=${username}&limit=${PAGE_SIZE}`;
-  if (ppUrl && state.pullpushCommentAfter) {
-    ppUrl += `&before=${state.pullpushCommentAfter}`;
+  // 2. Fetch Arctic Shift comments via local proxy
+  let asUrl = state.pullpushCommentAfter === 'END' ? null : `/api/arctic-shift/comments/search?author=${username}&limit=${PAGE_SIZE}`;
+  if (asUrl && state.pullpushCommentAfter) {
+    asUrl += `&before=${state.pullpushCommentAfter}`;
   }
 
   let liveItems = [];
@@ -266,7 +284,7 @@ async function loadComments(username, reset = false) {
   try {
     const promises = [];
     if (liveUrl) promises.push(redditFetch(liveUrl).then(res => ({ type: 'live', res })));
-    if (ppUrl) promises.push(fetch(ppUrl).then(res => res.json()).then(res => ({ type: 'pullpush', res })));
+    if (asUrl) promises.push(fetch(asUrl).then(res => res.json()).then(res => ({ type: 'arctic-shift', res })));
 
     const results = await Promise.allSettled(promises);
 
@@ -280,18 +298,28 @@ async function loadComments(username, reset = false) {
           } else {
             state.redditCommentAfter = 'END';
           }
-        } else if (type === 'pullpush') {
+        } else if (type === 'arctic-shift') {
           if (res && res.data && res.data.length > 0) {
             state.pullpushCommentAfter = res.data[res.data.length - 1].created_utc;
-            ppItems = res.data.map(item => ({
-              id: item.id,
-              subreddit: item.subreddit,
-              created_utc: item.created_utc,
-              body: item.body,
-              score: item.score,
-              permalink: item.permalink || `/r/${item.subreddit}/comments/${item.link_id?.split('_')[1] || '0'}/_/${item.id}/`,
-              link_title: item.link_title || ''
-            }));
+            ppItems = res.data.map(item => {
+              // Parse a slug title from permalink if link_title is missing
+              let linkTitle = item.link_title || '';
+              if (!linkTitle && item.permalink) {
+                const parts = item.permalink.split('/');
+                if (parts.length >= 6) {
+                  linkTitle = parts[5].replace(/[_-]/g, ' ');
+                }
+              }
+              return {
+                id: item.id,
+                subreddit: item.subreddit,
+                created_utc: item.created_utc,
+                body: item.body,
+                score: item.score,
+                permalink: item.permalink || `/r/${item.subreddit}/comments/${item.link_id?.split('_')[1] || '0'}/_/${item.id}/`,
+                link_title: linkTitle
+              };
+            });
           } else {
             state.pullpushCommentAfter = 'END';
           }
