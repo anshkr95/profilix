@@ -4,10 +4,10 @@ const state = {
   allComments: [],
   redditPostAfter: null,
   redditCommentAfter: null,
+  searchPostAfter: null,
+  pullpushCommentAfter: null,
   currentTab: 'posts',
   loading: false,
-  useSearchForPosts: false,
-  usePullpushForComments: false
 };
 
 /* ===== REDDIT API via LOCAL PROXY ===== */
@@ -115,8 +115,8 @@ async function searchUser() {
   state.allComments = [];
   state.redditPostAfter = null;
   state.redditCommentAfter = null;
-  state.useSearchForPosts = false;
-  state.usePullpushForComments = false;
+  state.searchPostAfter = null;
+  state.pullpushCommentAfter = null;
   state.currentTab = 'posts';
   state.loading = true;
 
@@ -177,43 +177,46 @@ async function searchUser() {
 
 /* ===== FETCH POSTS ===== */
 async function loadPosts(username, reset = false) {
-  if (reset) state.useSearchForPosts = false;
-
-  let redditUrl = `https://www.reddit.com/user/${username}/submitted.json?limit=${PAGE_SIZE}${state.redditPostAfter ? '&after=' + state.redditPostAfter : ''}`;
-  if (state.useSearchForPosts) {
-    redditUrl = `https://www.reddit.com/search.json?q=author:${username}&type=link&sort=new&limit=${PAGE_SIZE}${state.redditPostAfter ? '&after=' + state.redditPostAfter : ''}`;
+  if (reset) {
+    state.redditPostAfter = null;
+    state.searchPostAfter = null;
   }
+
+  // 1. Fetch live profile posts
+  let liveUrl = state.redditPostAfter === 'END' ? null : `https://www.reddit.com/user/${username}/submitted.json?limit=${PAGE_SIZE}${state.redditPostAfter ? '&after=' + state.redditPostAfter : ''}`;
   
-  let newRedditItems = [];
+  // 2. Fetch search API posts
+  let searchUrl = state.searchPostAfter === 'END' ? null : `https://www.reddit.com/search.json?q=author:${username}&type=link&sort=new&limit=${PAGE_SIZE}${state.searchPostAfter ? '&after=' + state.searchPostAfter : ''}`;
+
+  let liveItems = [];
+  let searchItems = [];
 
   try {
-    let redditRes = null;
-    try {
-      redditRes = await redditFetch(redditUrl);
-    } catch (e) {
-      console.warn('Primary posts fetch failed, attempting fallback...', e);
-    }
+    const promises = [];
+    if (liveUrl) promises.push(redditFetch(liveUrl).then(res => ({ type: 'live', res })));
+    if (searchUrl) promises.push(redditFetch(searchUrl).then(res => ({ type: 'search', res })));
 
-    let rData = redditRes && redditRes.data ? redditRes.data : { children: [] };
-      
-    // Fallback: If Reddit blocks the user profile API (returns 0 items)
-    // we can often bypass this by using Reddit's Search API instead.
-    if ((!rData.children || rData.children.length === 0) && !state.redditPostAfter && !state.useSearchForPosts) {
-      try {
-        const fallbackUrl = `https://www.reddit.com/search.json?q=author:${username}&type=link&sort=new&limit=${PAGE_SIZE}`;
-        const fallback = await redditFetch(fallbackUrl);
-        if (fallback && fallback.data && fallback.data.children && fallback.data.children.length > 0) {
-          rData = fallback.data;
-          state.useSearchForPosts = true;
+    const results = await Promise.allSettled(promises);
+
+    results.forEach(result => {
+      if (result.status === 'fulfilled') {
+        const { type, res } = result.value;
+        if (res && res.data) {
+          const items = (res.data.children || []).map(c => c.data);
+          const after = res.data.after || 'END';
+          if (type === 'live') {
+            liveItems = items;
+            state.redditPostAfter = after;
+          } else {
+            searchItems = items;
+            state.searchPostAfter = after;
+          }
+        } else {
+          if (type === 'live') state.redditPostAfter = 'END';
+          if (type === 'search') state.searchPostAfter = 'END';
         }
-      } catch (e) {
-        console.warn('Fallback posts fetch failed:', e);
       }
-    }
-
-    state.redditPostAfter = rData.after || null;
-    newRedditItems.push(...(rData.children || []).map(c => c.data));
-
+    });
   } catch (e) {
     console.warn('Posts fetch error:', e);
   }
@@ -222,75 +225,79 @@ async function loadPosts(username, reset = false) {
   const map = new Map();
   if (!reset) state.allPosts.forEach(i => map.set(i.id, i));
   
-  newRedditItems.forEach(i => {
+  // Archive/search items first (default to hidden)
+  searchItems.forEach(i => {
+    i._is_archive_only = true;
+    map.set(i.id, i);
+  });
+
+  // Live items override archive tag
+  liveItems.forEach(i => {
     i._is_live = true;
+    i._is_archive_only = false;
     map.set(i.id, i);
   });
 
   state.allPosts = Array.from(map.values()).sort((a, b) => b.created_utc - a.created_utc);
 
   renderFeed('posts');
-  document.getElementById('posts-count').textContent = state.allPosts.length + (state.redditPostAfter ? '+' : '');
+  document.getElementById('posts-count').textContent = state.allPosts.length;
 }
 
 /* ===== FETCH COMMENTS ===== */
 async function loadComments(username, reset = false) {
-  if (reset) state.usePullpushForComments = false;
+  if (reset) {
+    state.redditCommentAfter = null;
+    state.pullpushCommentAfter = null;
+  }
 
-  let redditUrl = `https://www.reddit.com/user/${username}/comments.json?limit=${PAGE_SIZE}${state.redditCommentAfter ? '&after=' + state.redditCommentAfter : ''}`;
+  // 1. Fetch live profile comments
+  let liveUrl = state.redditCommentAfter === 'END' ? null : `https://www.reddit.com/user/${username}/comments.json?limit=${PAGE_SIZE}${state.redditCommentAfter ? '&after=' + state.redditCommentAfter : ''}`;
   
-  let newRedditItems = [];
+  // 2. Fetch pullpush comments
+  let ppUrl = state.pullpushCommentAfter === 'END' ? null : `https://api.pullpush.io/reddit/search/comment/?author=${username}&limit=${PAGE_SIZE}`;
+  if (ppUrl && state.pullpushCommentAfter) {
+    ppUrl += `&before=${state.pullpushCommentAfter}`;
+  }
+
+  let liveItems = [];
+  let ppItems = [];
 
   try {
-    let redditRes = null;
-    if (!state.usePullpushForComments) {
-      try {
-        redditRes = await redditFetch(redditUrl);
-      } catch (e) {
-        console.warn('Primary comments fetch failed, attempting fallback...', e);
-      }
-    }
+    const promises = [];
+    if (liveUrl) promises.push(redditFetch(liveUrl).then(res => ({ type: 'live', res })));
+    if (ppUrl) promises.push(fetch(ppUrl).then(res => res.json()).then(res => ({ type: 'pullpush', res })));
 
-    let rData = redditRes && redditRes.data ? redditRes.data : { children: [] };
+    const results = await Promise.allSettled(promises);
 
-    // Fallback: Use Pullpush API if Reddit API fails to return comments
-    if ((!rData.children || rData.children.length === 0) && (!state.redditCommentAfter || state.usePullpushForComments)) {
-      try {
-        let ppUrl = `https://api.pullpush.io/reddit/search/comment/?author=${username}&limit=${PAGE_SIZE}`;
-        if (state.usePullpushForComments && state.redditCommentAfter) {
-          ppUrl += `&before=${state.redditCommentAfter}`;
-        }
-        
-        const pullpushRes = await fetch(ppUrl);
-        if (pullpushRes.ok) {
-          const pullpushData = await pullpushRes.json();
-          if (pullpushData && pullpushData.data && pullpushData.data.length > 0) {
-            state.usePullpushForComments = true;
-            rData.children = pullpushData.data.map(item => ({
-              data: {
-                id: item.id,
-                subreddit: item.subreddit,
-                created_utc: item.created_utc,
-                body: item.body,
-                score: item.score,
-                permalink: item.permalink || `/r/${item.subreddit}/comments/${item.link_id?.split('_')[1]}/_/${item.id}/`,
-                link_title: item.link_title || ''
-              }
-            }));
-            
-            // Set after to the created_utc of the last item for next page
-            rData.after = pullpushData.data[pullpushData.data.length - 1].created_utc;
+    results.forEach(result => {
+      if (result.status === 'fulfilled') {
+        const { type, res } = result.value;
+        if (type === 'live') {
+          if (res && res.data) {
+            state.redditCommentAfter = res.data.after || 'END';
+            liveItems = (res.data.children || []).map(c => c.data);
           } else {
-            rData.after = null;
+            state.redditCommentAfter = 'END';
+          }
+        } else if (type === 'pullpush') {
+          if (res && res.data && res.data.length > 0) {
+            state.pullpushCommentAfter = res.data[res.data.length - 1].created_utc;
+            ppItems = res.data.map(item => ({
+              id: item.id,
+              subreddit: item.subreddit,
+              created_utc: item.created_utc,
+              body: item.body,
+              score: item.score,
+              permalink: item.permalink || `/r/${item.subreddit}/comments/${item.link_id?.split('_')[1] || '0'}/_/${item.id}/`,
+              link_title: item.link_title || ''
+            }));
+          } else {
+            state.pullpushCommentAfter = 'END';
           }
         }
-      } catch (e) {
-        console.warn('Pullpush fallback failed:', e);
       }
-    }
-
-    state.redditCommentAfter = rData.after || null;
-    newRedditItems.push(...(rData.children || []).map(c => c.data));
+    });
 
   } catch (e) {
     console.warn('Comments fetch error:', e);
@@ -300,15 +307,23 @@ async function loadComments(username, reset = false) {
   const map = new Map();
   if (!reset) state.allComments.forEach(i => map.set(i.id, i));
   
-  newRedditItems.forEach(i => {
+  // Archive items first
+  ppItems.forEach(i => {
+    i._is_archive_only = true;
+    map.set(i.id, i);
+  });
+
+  // Live items override archive tag
+  liveItems.forEach(i => {
     i._is_live = true;
+    i._is_archive_only = false;
     map.set(i.id, i);
   });
 
   state.allComments = Array.from(map.values()).sort((a, b) => b.created_utc - a.created_utc);
 
   renderFeed('comments');
-  document.getElementById('comments-count').textContent = state.allComments.length + (state.redditCommentAfter ? '+' : '');
+  document.getElementById('comments-count').textContent = state.allComments.length;
 }
 
 /* ===== RENDER PROFILE ===== */
@@ -475,8 +490,8 @@ function switchTab(tab) {
 function updateLoadMoreBtn() {
   const row = document.getElementById('load-more-row');
   const hasMore = state.currentTab === 'posts' 
-    ? !!state.redditPostAfter 
-    : !!state.redditCommentAfter;
+    ? (state.redditPostAfter !== 'END' || state.searchPostAfter !== 'END')
+    : (state.redditCommentAfter !== 'END' || state.pullpushCommentAfter !== 'END');
   row.style.display = hasMore ? 'flex' : 'none';
 }
 
