@@ -792,3 +792,94 @@ function closeModal(event, id) {
   document.body.style.overflow = '';
 }
 
+/* ===== CONTACT FORM SUBMISSION (Option A - Web3Forms) ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  const contactForm = document.getElementById('contact-form');
+  if (contactForm) {
+    contactForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('contact-submit-btn');
+      const originalText = btn.textContent;
+      btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;margin-right:8px;">⏳</span> Sending...';
+      btn.disabled = true;
+
+      try {
+        const formData = new FormData(contactForm);
+        const response = await fetch('https://api.web3forms.com/submit', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        const data = await response.json();
+        if (data.success) {
+          showToast('Message sent successfully! 🚀');
+          contactForm.reset();
+        } else {
+          showToast(data.message || 'Failed to send message.');
+        }
+      } catch (err) {
+        showToast('Network error. Direct email: profilixsupport@gmail.com');
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    });
+  }
+
+  /* ===== 3D PARALLAX TILT ANIMATION ===== */
+  const initTiltEffect = () => {
+    const cards = document.querySelectorAll('.tilt-card');
+    cards.forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left; // x position within element
+        const y = e.clientY - rect.top;  // y position within element
+        
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // Calculate tilt amounts (max 8 degrees)
+        const rotateX = ((centerY - y) / centerY) * 8;
+        const rotateY = ((x - centerX) / centerX) * 8;
+        
+        card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`;
+      });
+      
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+      });
+    });
+  };
+  
+  // Initialize tilts and periodically refresh them for dynamically rendered cards
+  initTiltEffect();
+  
+  // Set up observer to automatically re-initialize tilt on newly rendered dynamic profile-cards
+  const observer = new MutationObserver((mutations) => {
+    initTiltEffect();
+  });
+  const resultsContainer = document.getElementById('results-section');
+  if (resultsContainer) {
+    observer.observe(resultsContainer, { childList: true, subtree: true });
+  }
+
+  /* ===== SCROLL REVEAL ANIMATION ===== */
+  const revealElements = document.querySelectorAll('.reveal-on-scroll');
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        // Unobserve once revealed to keep layout performant
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.15,
+    rootMargin: '0px 0px -50px 0px'
+  });
+
+  revealElements.forEach(el => revealObserver.observe(el));
+});
+

@@ -1,23 +1,36 @@
-# Privacy Policy
+# Privacy Policy – Profilix
 
 **Last Updated:** May 2026
 
-At Profilix, we deeply respect your privacy as well as the privacy of individuals whose public data is queried through our platform.
+At Profilix, we are deeply committed to protecting the privacy of our users as well as the individuals whose public Reddit footprints are audited through our platform. 
 
-## 1. Data Collection
-- **No Personal Data Stored:** We do not collect, store, or log any personal data from our users.
-- **Anonymous Scanning:** All searches are performed anonymously without requiring a login or account.
-- **No Analytics Tracking:** We do not embed invasive trackers to monitor how you use the interface.
+This Privacy Policy explains how our tool processes data and why you can trust it to be fully anonymous, secure, and respectful of digital rights.
 
-## 2. Reddit API Compliance
-Profilix acts as an independent proxy for public data:
-- **Strict Compliance:** We operate strictly within the bounds of public data aggregation. We **do not violate Reddit's Terms of Service**.
-- **No Unauthorized Access:** We do not bypass authentication or scrape private data (e.g., direct messages or private subreddits).
-- **Public Footprints Only:** The data we retrieve is strictly public information accessible via Reddit's standard endpoints, or information legally archived by third-party services.
+---
 
-## 3. Data Retention
-- We do not retain the search queries or the data you search for. 
-- Once your browser session is closed, the fetched data is cleared entirely from memory.
+## 1. Zero Data Collection & Storage
+* **No Database Logging:** Profilix does not store, log, or track search queries, username lookups, or aggregated results. There is no database attached to the platform for profile archiving.
+* **Anonymous Auditing:** All scans are performed without requiring user accounts, registrations, OAuth keys, or email verification.
+* **Transient Memory:** All retrieved posts, comments, and metrics exist strictly inside the temporary state of your local browser tab. Once the tab or session is closed, the data is completely erased from your device's memory.
 
-## 4. Third-Party Links
-Our application interacts with third-party APIs (Reddit, PullPush, TrackTheirProfile). We are not responsible for the privacy practices of these third-party platforms.
+---
+
+## 2. Platform Compliance & Reddit Policies
+Profilix operates entirely as a real-time aggregator of public internet information. It does not violate the developer terms of service of Reddit or third-party archives:
+* **Public Feeds Only:** We query publicly readable RSS and JSON interfaces (e.g., standard `.json` profiles) which Reddit exposes to the open web. 
+* **No Authentication Bypassing:** We do not bypass login pages, firewalls, CAPTCHAs, or system locks. We do not access private messages, draft posts, or private subreddit threads.
+* **Archival Separation:** Deleted comments and posts are retrieved from the independent, community-run **Arctic Shift API**. Profilix itself does not scrape, cache, or maintain archives of deleted Reddit data.
+
+---
+
+## 3. Server-Side Request Routing (CORS Proxy)
+To prevent cross-origin resource sharing (CORS) blocks from web browsers, the Profilix local server acts as a network proxy. 
+* The proxy only reformats standard header elements to allow your client-side browser to process public API arrays.
+* Our proxy server **does not log, store, or inspect** the content of the proxied request packets.
+
+---
+
+## 4. Contact Information
+If you have any questions or feedback regarding our privacy practices, you can contact support directly via:
+* **Support Email:** [profilixsupport@gmail.com](mailto:profilixsupport@gmail.com)
+* **Web Contact Form:** Accessible via the footer on our main landing page.
