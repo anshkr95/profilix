@@ -231,9 +231,10 @@ async function loadPosts(username, reset = false) {
               permalink: item.permalink,
               url: item.url || '',
               post_hint: item.post_hint || '',
-              is_self: item.is_self !== undefined ? item.is_self : !item.url,
+                            is_self: item.is_self !== undefined ? item.is_self : !item.url,
               link_flair_text: item.link_flair_text || '',
-              removed_by_category: item.removed_by_category || null
+              removed_by_category: item.removed_by_category || null,
+              media: item.media || null
             }));
           } else {
             state.searchPostAfter = 'END';
@@ -451,8 +452,32 @@ function renderItem(item, type, index) {
     }
     
     const flair = item.link_flair_text ? `<span class="item-flair">${escapeHtml(item.link_flair_text)}</span>` : '';
+    
     const isImage = item.post_hint === 'image' || (item.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(item.url));
-    const isLink = !item.is_self && !isImage;
+    const isVideo = item.is_video || (item.media && item.media.reddit_video);
+    const isLink = !item.is_self && !isImage && !isVideo;
+
+    let mediaHtml = '';
+    if (isImage) {
+      mediaHtml = `
+        <div class="item-media" onclick="event.stopPropagation()">
+          <img src="${escapeHtml(item.url)}" alt="Post image" class="post-media-img" loading="lazy" onclick="window.open('${escapeHtml(item.url)}', '_blank')" />
+        </div>`;
+    } else if (isVideo) {
+      let videoUrl = '';
+      if (item.media && item.media.reddit_video && item.media.reddit_video.fallback_url) {
+        videoUrl = item.media.reddit_video.fallback_url;
+      } else if (item.url) {
+        videoUrl = item.url;
+      }
+      if (videoUrl) {
+        const proxiedVideoUrl = `/api/reddit/video-proxy?url=${encodeURIComponent(videoUrl)}`;
+        mediaHtml = `
+          <div class="item-media" onclick="event.stopPropagation()">
+            <video src="${escapeHtml(proxiedVideoUrl)}" controls class="post-media-video" preload="metadata"></video>
+          </div>`;
+      }
+    }
 
     return `
       <div class="feed-item" data-subreddit="${escapeHtml(sub).toLowerCase()}" style="animation-delay:${delay}s" onclick="window.open('${link}','_blank')">
@@ -462,10 +487,12 @@ function renderItem(item, type, index) {
           ${flair}
           ${isLink ? `<span class="item-flair" style="background:rgba(0,229,160,0.1);color:var(--accent);">🔗 Link</span>` : ''}
           ${isImage ? `<span class="item-flair" style="background:rgba(255,107,53,0.1);color:var(--orange);">🖼️ Image</span>` : ''}
+          ${isVideo ? `<span class="item-flair" style="background:rgba(0,229,255,0.1);color:var(--cyan);">📹 Video</span>` : ''}
           <span class="item-time">${time}</span>
         </div>
         <div class="item-title">${title}</div>
         ${bodyHtml}
+        ${mediaHtml}
         <div class="item-footer">
           <span class="item-stat upvote">⬆ ${score}</span>
           <span class="item-stat comments">💬 ${numComments}</span>
