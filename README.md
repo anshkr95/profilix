@@ -32,6 +32,9 @@ All user data remains strictly in local memory and is visualised via interactive
 
 * 📇 **Dual-Fetch Pipeline:** Queries live Reddit JSON feeds and Arctic Shift historical search indices concurrently.
 * 👻 **Unmask Deleted/Hidden Items:** Auto-tags and highlights posts and comments that exist in the archives but are removed from the live Reddit profile.
+* 🛡️ **Antivirus-Safe JSONP Bypass:** Employs an obfuscated client-side JSONP fetch fallback to query Reddit directly from the user's residential IP, completely bypassing server-side WAF / CDN blocks without triggering local antivirus warnings.
+* 📖 **Collapsible "Read More" Toggles:** Truncates long post (240+ chars) and comment (320+ chars) bodies with inline toggles, allowing users to expand or collapse text which stretches cards naturally.
+* 🖼️ **Inline Image & Video Previews:** Seamlessly renders post images and native HTML5 video players inside the dashboard feeds using an Express proxy fallback.
 * 📊 **Subreddit Frequency Chart:** Dynamic doughnut visualization displaying user activity distribution across subreddits.
 * 🖱️ **Header Filter & Sorting:** Quick text-matching queries and sorting filters (Newest, Oldest, Top Voted) running entirely client-side.
 * 📤 **Structured CSV Exports:** Download full timeline datasets with a single click.
