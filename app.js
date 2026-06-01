@@ -435,7 +435,21 @@ function renderItem(item, type, index) {
   if (type === 'posts') {
     const numComments = formatNum(item.num_comments || 0);
     const title = escapeHtml(item.title || '');
-    const selftext = item.selftext ? escapeHtml(item.selftext) : '';
+    
+    let bodyHtml = '';
+    if (item.selftext) {
+      const fullText = escapeHtml(item.selftext);
+      if (fullText.length > 240) {
+        bodyHtml = `<div class="item-body">
+          <span class="text-collapsed">${fullText.substring(0, 240)}...</span>
+          <span class="text-expanded" style="display:none;">${fullText}</span>
+          <span class="read-more-toggle" onclick="event.stopPropagation(); toggleReadMore(this)" style="color:var(--accent); cursor:pointer; font-weight:600; margin-left:6px;">Read More</span>
+        </div>`;
+      } else {
+        bodyHtml = `<div class="item-body">${fullText}</div>`;
+      }
+    }
+    
     const flair = item.link_flair_text ? `<span class="item-flair">${escapeHtml(item.link_flair_text)}</span>` : '';
     const isImage = item.post_hint === 'image' || (item.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(item.url));
     const isLink = !item.is_self && !isImage;
@@ -451,7 +465,7 @@ function renderItem(item, type, index) {
           <span class="item-time">${time}</span>
         </div>
         <div class="item-title">${title}</div>
-        ${selftext ? `<div class="item-body">${selftext}</div>` : ''}
+        ${bodyHtml}
         <div class="item-footer">
           <span class="item-stat upvote">⬆ ${score}</span>
           <span class="item-stat comments">💬 ${numComments}</span>
@@ -461,8 +475,21 @@ function renderItem(item, type, index) {
       </div>`;
   } else {
     // Comment
-    const body = item.body ? escapeHtml(item.body) : '';
     const context = item.link_title ? escapeHtml(item.link_title).substring(0, 80) : '';
+    
+    let bodyHtml = '';
+    if (item.body) {
+      const fullText = escapeHtml(item.body);
+      if (fullText.length > 320) {
+        bodyHtml = `<div class="item-body">
+          <span class="text-collapsed">${fullText.substring(0, 320)}...</span>
+          <span class="text-expanded" style="display:none;">${fullText}</span>
+          <span class="read-more-toggle" onclick="event.stopPropagation(); toggleReadMore(this)" style="color:var(--accent); cursor:pointer; font-weight:600; margin-left:6px;">Read More</span>
+        </div>`;
+      } else {
+        bodyHtml = `<div class="item-body">${fullText}</div>`;
+      }
+    }
 
     return `
       <div class="feed-item" data-subreddit="${escapeHtml(sub).toLowerCase()}" style="animation-delay:${delay}s" onclick="window.open('${link}','_blank')">
@@ -472,13 +499,28 @@ function renderItem(item, type, index) {
           <span class="item-time">${time}</span>
         </div>
         ${context ? `<div class="item-title" style="font-size:0.85rem;color:var(--text2);font-weight:500;margin-bottom:6px;">📌 ${context}${item.link_title && item.link_title.length > 80 ? '…' : ''}</div>` : ''}
-        <div class="item-body">${body}</div>
+        ${bodyHtml}
         <div class="item-footer">
           <span class="item-stat upvote">⬆ ${score}</span>
           <button class="copy-btn" title="Copy Link" onclick="event.stopPropagation(); navigator.clipboard.writeText('${link}'); showToast('Link copied!');">📋</button>
           <a class="item-link-btn" href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View →</a>
         </div>
       </div>`;
+  }
+}
+
+function toggleReadMore(btn) {
+  const parent = btn.parentNode;
+  const collapsed = parent.querySelector('.text-collapsed');
+  const expanded = parent.querySelector('.text-expanded');
+  if (expanded.style.display === 'none') {
+    expanded.style.display = 'inline';
+    collapsed.style.display = 'none';
+    btn.textContent = 'Read Less';
+  } else {
+    expanded.style.display = 'none';
+    collapsed.style.display = 'inline';
+    btn.textContent = 'Read More';
   }
 }
 
