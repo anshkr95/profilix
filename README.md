@@ -48,10 +48,10 @@ Profilix separates its presentation logic from API ingestion using an unauthenti
 ```mermaid
 graph TD
     Client["Browser Frontend (app.js)"] -->|Scan/Audits| Proxy["Local Express Proxy (server.js)"]
-    Proxy -->|1. Public JSON API / User-Agent curl| RedditAPI[Reddit Public Endpoints]
-    Proxy -->|2. Search API / User-Agent curl| ArcticShift[Arctic Shift Archive API]
-    Client -->|Contact Form Submission| Web3Forms[Web3Forms API]
-    Web3Forms -->|Forward Submission| Gmail[profilixsupport@gmail.com]
+    Proxy -->|1. Public JSON API / User-Agent curl| RedditAPI["Reddit Public Endpoints"]
+    Proxy -->|2. Search API / User-Agent curl| ArcticShift["Arctic Shift Archive API"]
+    Client -->|Contact Form Submission| Web3Forms["Web3Forms API"]
+    Web3Forms -->|Forward Submission| Gmail["profilixsupport@gmail.com"]
     
     style Client fill:#ff2e93,stroke:#fff,stroke-width:2px,color:#fff
     style Proxy fill:#8c30f5,stroke:#fff,stroke-width:2px,color:#fff
