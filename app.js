@@ -17,25 +17,11 @@ async function redditFetch(redditUrl) {
   // Try JSONP first: it natively bypasses CORS and utilizes the client's own IP
   // This avoids situations where the server/proxy IP is rate-limited or blocked.
   try {
-    return await new Promise((resolve, reject) =\u003e {
+    return await new Promise((resolve, reject) => {
       const cbName = 'reddit_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-      let settled = false;
-
-      // Timeout — fall back to proxy if JSONP hangs (e.g., on Render/production)
-      const timeoutId = setTimeout(() =\u003e {
-        if (settled) return;
-        settled = true;
+      window[cbName] = (data) => {
         delete window[cbName];
-        if (el && el.parentNode) el.parentNode.removeChild(el);
-        reject(new Error('JSONP timeout'));
-      }, 8000);
-
-      window[cbName] = (data) =\u003e {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeoutId);
-        delete window[cbName];
-        if (el && el.parentNode) el.parentNode.removeChild(el);
+        if (el.parentNode) el.parentNode.removeChild(el);
         resolve(data);
       };
       
@@ -45,10 +31,7 @@ async function redditFetch(redditUrl) {
       
       const el = document.createElement(tag);
       el[attr] = redditUrl + (redditUrl.includes('?') ? '&' : '?') + 'jsonp=' + cbName;
-      el.onerror = () =\u003e {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeoutId);
+      el.onerror = () => {
         delete window[cbName];
         if (el.parentNode) el.parentNode.removeChild(el);
         reject(new Error('JSONP failed'));
@@ -57,7 +40,7 @@ async function redditFetch(redditUrl) {
       document.head[method](el);
     });
   } catch (e) {
-    console.warn("JSONP fetch failed, falling back to local proxy...", e.message);
+    console.warn("JSONP fetch failed, falling back to local proxy...", e);
   }
 
   // Fallback to our local proxy (bypasses WAF blocks via curl server-side)
@@ -68,9 +51,7 @@ async function redditFetch(redditUrl) {
   try {
     const res2 = await fetch(localUrl);
     if (res2.ok) {
-      const json2 = await res2.json();
-      // Proxy sometimes returns { error: ... } — let caller handle it
-      return json2;
+      return await res2.json();
     }
   } catch (e) {
     console.warn("Local proxy fetch failed.", e);
@@ -78,7 +59,6 @@ async function redditFetch(redditUrl) {
 
   throw new Error("Reddit fetch failed completely.");
 }
-
 
 const PAGE_SIZE = 100;
 
@@ -157,37 +137,22 @@ async function searchUser() {
       console.warn('User profile not found (might be deleted/suspended). Falling back to basic profile.');
     }
 
-    // Reddit API can return different structures:
-    // Normal: { kind: "t2", data: { name, link_karma, ... } }
-    // Some JSONP: the data object directly (no wrapper)
-    // Error: { error: 404, message: "Not Found" }
-    let profileData = null;
-    if (aboutData && aboutData.data && aboutData.data.name) {
-      // Standard wrapped response { kind: "t2", data: {...} }
-      profileData = aboutData.data;
-    } else if (aboutData && aboutData.name) {
-      // Unwrapped response — data is the object itself
-      profileData = aboutData;
-    } else if (aboutData && aboutData.error) {
-      // Reddit returned an explicit error (deleted/suspended/banned)
-      console.warn(`Reddit API error ${aboutData.error}: ${aboutData.message}`);
-    }
-
-    if (!profileData) {
-      // Provide a generic fallback profile if the user is suspended/deleted/banned
-      profileData = {
-        name: username,
-        icon_img: '',
-        created_utc: null,
-        link_karma: 0,
-        comment_karma: 0,
-        total_karma: 0,
-        is_gold: false,
-        is_mod: false
+    if (!aboutData || !aboutData.data) {
+      // Provide a generic fallback profile if the user is suspended or deleted
+      aboutData = {
+        data: {
+          name: username,
+          icon_img: '',
+          created_utc: null,
+          link_karma: 0,
+          comment_karma: 0,
+          is_gold: false,
+          is_mod: false
+        }
       };
     }
 
-    renderProfile(profileData);
+    renderProfile(aboutData.data);
 
     setLoading(true, 'Fetching posts & comments…');
 
@@ -399,31 +364,14 @@ async function loadComments(username, reset = false) {
 /* ===== RENDER PROFILE ===== */
 function renderProfile(data) {
   const card = document.getElementById('profile-card');
-
-  // Reddit returns icon_img with query params for cache-busting; also try snoovatar_img as fallback
-  const avatarUrl = (data.icon_img && data.icon_img.startsWith('http'))
-    ? data.icon_img.split('?')[0]
-    : (data.snoovatar_img && data.snoovatar_img.startsWith('http'))
-      ? data.snoovatar_img.split('?')[0]
-      : null;
-
-  const avatar = avatarUrl
-    ? `<img src="${escapeHtml(avatarUrl)}" alt="avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.1);" />`
+  const avatar = data.icon_img
+    ? `<img src="${escapeHtml(data.icon_img.split('?')[0])}" alt="avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.1);" />`
     : `<div class="profile-avatar">👤</div>`;
 
   const joined = data.created_utc ? accountAge(data.created_utc) : 'Unknown';
-
-  // Reddit uses different field names for different account types:
-  // Regular users: link_karma + comment_karma
-  // Some accounts: post_karma, total_karma, awardee_karma, awarder_karma
-  const rawPostKarma   = data.link_karma    ?? data.post_karma    ?? 0;
-  const rawCommentKarma = data.comment_karma ?? 0;
-  const rawTotalKarma  = data.total_karma
-    ?? (rawPostKarma + rawCommentKarma + (data.awardee_karma || 0) + (data.awarder_karma || 0));
-
-  const postKarma    = formatNum(rawPostKarma);
-  const commentKarma = formatNum(rawCommentKarma);
-  const totalKarma   = formatNum(rawTotalKarma);
+  const postKarma = formatNum(data.link_karma || 0);
+  const commentKarma = formatNum(data.comment_karma || 0);
+  const totalKarma = formatNum((data.link_karma || 0) + (data.comment_karma || 0));
   const isGold = data.is_gold;
   const isMod = data.is_mod;
 
