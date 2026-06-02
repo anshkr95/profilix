@@ -35,35 +35,68 @@ app.get('/api/reddit/video-proxy', async (req, res) => {
 
 // Reddit API proxy — avoids CORS entirely since this runs server-side
 app.get('/api/reddit/*', async (req, res) => {
-  // Strip /api/reddit prefix to get the actual Reddit path
   const redditPath = req.params[0];
   const query = req.url.split('?')[1] ? '?' + req.url.split('?')[1] : '';
-  const redditUrl = `https://www.reddit.com/${redditPath}${redditPath.endsWith('.json') ? '' : '.json'}${query}`;
 
-  try {
-    // We use curl instead of node-fetch to bypass Reddit's strict TLS fingerprinting
-    const curlCommand = process.platform === 'win32' ? 'curl.exe' : 'curl';
-    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-    
-    execFile(curlCommand, ['-s', '-A', userAgent, '-H', 'Accept: application/json', '-H', 'Accept-Language: en-US,en;q=0.9', redditUrl], { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
-      if (error) {
-        console.error('Curl exec error:', error.message);
-        return res.status(500).json({ error: 'Curl error' });
+  // Try old.reddit.com first (less aggressively blocked), then www.reddit.com
+  const urls = [
+    `https://old.reddit.com/${redditPath}${redditPath.endsWith('.json') ? '' : '.json'}${query}`,
+    `https://www.reddit.com/${redditPath}${redditPath.endsWith('.json') ? '' : '.json'}${query}`,
+  ];
+
+  const curlCommand = process.platform === 'win32' ? 'curl.exe' : 'curl';
+
+  // Rotate user agents to reduce fingerprinting
+  const agents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  ];
+  const userAgent = agents[Math.floor(Math.random() * agents.length)];
+
+  const tryFetch = (url) => new Promise((resolve, reject) => {
+    const args = [
+      '-s', '-L',
+      '-A', userAgent,
+      '-H', 'Accept: application/json, text/javascript, */*',
+      '-H', 'Accept-Language: en-US,en;q=0.9',
+      '-H', 'Accept-Encoding: gzip, deflate, br',
+      '-H', 'Cache-Control: no-cache',
+      '-H', 'Pragma: no-cache',
+      '-H', 'Sec-Fetch-Dest: empty',
+      '-H', 'Sec-Fetch-Mode: cors',
+      '-H', 'Sec-Fetch-Site: same-origin',
+      '--compressed',
+      '--max-time', '15',
+      url
+    ];
+    execFile(curlCommand, args, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout) => {
+      if (error) return reject(error);
+      // Check if Reddit returned an HTML block page instead of JSON
+      const trimmed = stdout.trim();
+      if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) {
+        return reject(new Error('Reddit returned non-JSON (likely block page)'));
       }
       try {
-        const data = JSON.parse(stdout);
-        res.json(data);
-      } catch (parseErr) {
-        // Fallback for when Reddit sends a string or HTML instead of JSON
-        res.status(500).json({ error: 'Invalid JSON from Reddit', fallback: true });
+        resolve(JSON.parse(trimmed));
+      } catch (e) {
+        reject(new Error('Invalid JSON'));
       }
     });
+  });
 
-  } catch (err) {
-    console.error('Proxy error:', err.message);
-    res.status(500).json({ error: err.message, fallback: true });
+  for (const url of urls) {
+    try {
+      const data = await tryFetch(url);
+      return res.json(data);
+    } catch (err) {
+      console.warn('Reddit proxy attempt failed for', url, ':', err.message);
+    }
   }
+
+  res.status(503).json({ error: 'Reddit blocked server-side requests. JSONP should still work from browser.' });
 });
+
 
 // Proxy for Pullpush API to avoid browser CORS/adblocker issues
 app.get('/api/pullpush/*', async (req, res) => {
