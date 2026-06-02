@@ -10,54 +10,72 @@ const state = {
   loading: false,
 };
 
-/* ===== REDDIT API via LOCAL PROXY ===== */
-// Our Express server at /api/reddit/* proxies Reddit server-side,
-// completely avoiding any browser CORS issues.
+/* ===== REDDIT FETCH ===== */
+// JSONP-based fetch: uses the visitor's browser IP, bypasses server-side Reddit blocks.
+function redditJsonpFetch(url, timeoutMs) {
+  timeoutMs = timeoutMs || 12000;
+  return new Promise(function(resolve, reject) {
+    var cbName = 'rcb_' + Date.now() + '_' + (Math.random() * 9999 | 0);
+    var done = false;
+    var scriptEl = document.createElement('script');
+
+    function cleanup() {
+      done = true;
+      delete window[cbName];
+      if (scriptEl && scriptEl.parentNode) {
+        scriptEl.parentNode.removeChild(scriptEl);
+      }
+    }
+
+    var timer = setTimeout(function() {
+      if (done) return;
+      cleanup();
+      reject(new Error('JSONP timeout'));
+    }, timeoutMs);
+
+    window[cbName] = function(data) {
+      if (done) return;
+      clearTimeout(timer);
+      cleanup();
+      resolve(data);
+    };
+
+    scriptEl.onerror = function() {
+      if (done) return;
+      clearTimeout(timer);
+      cleanup();
+      reject(new Error('JSONP script error'));
+    };
+
+    scriptEl.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'jsonp=' + cbName;
+    document.head.appendChild(scriptEl);
+  });
+}
+
 async function redditFetch(redditUrl) {
-  // Try JSONP first: it natively bypasses CORS and utilizes the client's own IP
-  // This avoids situations where the server/proxy IP is rate-limited or blocked.
+  // Try JSONP first — uses visitor IP, works even when server proxy is blocked
   try {
-    return await new Promise((resolve, reject) => {
-      const cbName = 'reddit_cb_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-      window[cbName] = (data) => {
-        delete window[cbName];
-        if (el.parentNode) el.parentNode.removeChild(el);
-        resolve(data);
-      };
-      
-      const tag = ['s', 'c', 'r', 'i', 'p', 't'].join('');
-      const attr = ['s', 'r', 'c'].join('');
-      const method = ['append', 'Child'].join('');
-      
-      const el = document.createElement(tag);
-      el[attr] = redditUrl + (redditUrl.includes('?') ? '&' : '?') + 'jsonp=' + cbName;
-      el.onerror = () => {
-        delete window[cbName];
-        if (el.parentNode) el.parentNode.removeChild(el);
-        reject(new Error('JSONP failed'));
-      };
-      
-      document.head[method](el);
-    });
+    return await redditJsonpFetch(redditUrl);
   } catch (e) {
-    console.warn("JSONP fetch failed, falling back to local proxy...", e);
+    console.warn('JSONP failed:', e.message, '— trying server proxy...');
   }
 
-  // Fallback to our local proxy (bypasses WAF blocks via curl server-side)
+  // Server proxy fallback
   const urlObj = new URL(redditUrl);
-  let pathname = urlObj.pathname.replace(/\.json$/, '');
-  const localUrl = `/api/reddit${pathname}${urlObj.search}`;
-  
+  const pathname = urlObj.pathname.replace(/\.json$/, '');
+  const localUrl = '/api/reddit' + pathname + urlObj.search;
   try {
     const res2 = await fetch(localUrl);
     if (res2.ok) {
-      return await res2.json();
+      const j = await res2.json();
+      if (j && typeof j.error === 'string') throw new Error('Proxy: ' + j.error);
+      return j;
     }
   } catch (e) {
-    console.warn("Local proxy fetch failed.", e);
+    console.warn('Proxy also failed:', e.message);
   }
 
-  throw new Error("Reddit fetch failed completely.");
+  throw new Error('Reddit fetch failed completely.');
 }
 
 const PAGE_SIZE = 100;
