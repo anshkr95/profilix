@@ -137,22 +137,32 @@ async function searchUser() {
       console.warn('User profile not found (might be deleted/suspended). Falling back to basic profile.');
     }
 
-    if (!aboutData || !aboutData.data) {
-      // Provide a generic fallback profile if the user is suspended or deleted
-      aboutData = {
-        data: {
-          name: username,
-          icon_img: '',
-          created_utc: null,
-          link_karma: 0,
-          comment_karma: 0,
-          is_gold: false,
-          is_mod: false
-        }
+    // Reddit API returns different shapes depending on account type:
+    // Normal:  { kind: "t2", data: { name, link_karma, ... } }
+    // JSONP:   bare data object (no .data wrapper)
+    // Error:   { error: 404, message: "Not Found" }
+    let profileData = null;
+    if (aboutData && aboutData.data && aboutData.data.name) {
+      profileData = aboutData.data;            // standard wrapped
+    } else if (aboutData && aboutData.name) {
+      profileData = aboutData;                 // bare object
+    } else if (aboutData && aboutData.error) {
+      console.warn('Reddit error ' + aboutData.error + ': ' + aboutData.message);
+    }
+    if (!profileData) {
+      profileData = {
+        name: username,
+        icon_img: '',
+        created_utc: null,
+        link_karma: 0,
+        comment_karma: 0,
+        total_karma: 0,
+        is_gold: false,
+        is_mod: false
       };
     }
 
-    renderProfile(aboutData.data);
+    renderProfile(profileData);
 
     setLoading(true, 'Fetching posts & comments…');
 
@@ -364,14 +374,21 @@ async function loadComments(username, reset = false) {
 /* ===== RENDER PROFILE ===== */
 function renderProfile(data) {
   const card = document.getElementById('profile-card');
-  const avatar = data.icon_img
-    ? `<img src="${escapeHtml(data.icon_img.split('?')[0])}" alt="avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.1);" />`
+  // Avatar: icon_img can be empty string or relative for some accounts
+  const _src = (data.icon_img && data.icon_img.startsWith('http')) ? data.icon_img
+    : (data.snoovatar_img && data.snoovatar_img.startsWith('http')) ? data.snoovatar_img : '';
+  const avatar = _src
+    ? `<img src="${escapeHtml(_src.split('?')[0])}" alt="avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.1);" />`
     : `<div class="profile-avatar">👤</div>`;
 
   const joined = data.created_utc ? accountAge(data.created_utc) : 'Unknown';
-  const postKarma = formatNum(data.link_karma || 0);
-  const commentKarma = formatNum(data.comment_karma || 0);
-  const totalKarma = formatNum((data.link_karma || 0) + (data.comment_karma || 0));
+  // Reddit uses different karma fields for admins vs normal users
+  const _rp  = (data.link_karma    != null) ? data.link_karma    : (data.post_karma    != null ? data.post_karma    : 0);
+  const _rc  = (data.comment_karma != null) ? data.comment_karma : 0;
+  const _rt  = (data.total_karma   != null) ? data.total_karma   : (_rp + _rc + (data.awardee_karma || 0) + (data.awarder_karma || 0));
+  const postKarma    = formatNum(_rp);
+  const commentKarma = formatNum(_rc);
+  const totalKarma   = formatNum(_rt);
   const isGold = data.is_gold;
   const isMod = data.is_mod;
 
