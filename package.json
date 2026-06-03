@@ -1,7 +1,7 @@
 {
-  "name": "redditspy",
+  "name": "profilix",
   "version": "1.0.0",
-  "description": "Reddit profile viewer",
+  "description": "Advanced profile auditing, timeline aggregation, and subreddit analytics for Reddit.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

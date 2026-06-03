@@ -9,7 +9,7 @@
  |_|   |_|  \___/|_| |_|_|_/_/\_\
 ```
 
-**A premium, privacy-first dashboard for real-time Reddit profile auditing, timeline aggregation, and subreddit analytics.**
+**A premium, privacy-first dashboard designed to help users reclaim their deleted Reddit content, audit their digital footprint, and analyze subreddit activity in real time.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
@@ -19,7 +19,7 @@
 
 ---
 
-[Key Features](#key-features) • [System Architecture](#system-architecture) • [Getting Started](#getting-started) • [Reddit TOS Compliance](#reddit-tos-compliance) • [Contributing](#contributing)
+[Key Features](#-key-features) • [System Architecture](#%EF%B8%8F-system-architecture) • [Getting Started](#-getting-started) • [Reddit TOS Compliance](#%EF%B8%8F-reddit-tos-compliance) • [Contributing](#-contributing)
 
 </div>
 
@@ -27,20 +27,20 @@
 
 ## 🔍 Overview
 
-**Profilix** is a self-contained, open-source user analysis engine designed for privacy audits and OSINT research. It helps you aggregate and organize any public Reddit account's digital footprint. 
+**Profilix** is a self-contained, open-source user analysis engine and self-auditing dashboard. Its **primary motive** is to empower users to reclaim, audit, and recover their own deleted posts, removed comments, and historical digital footprints.
 
-Unlike standard tools, Profilix employs a **dual-pipeline fetch architecture**: it retrieves live data directly from Reddit while querying the third-party **Arctic Shift archive** in parallel to index deleted posts, removed comments, and historical footprints. 
+Unlike standard tools, Profilix employs a **dual-pipeline fetch architecture**: it retrieves live data directly from Reddit while querying the third-party **Arctic Shift archive** in parallel to index deleted and removed data. By merging these pipelines, Profilix acts as a recovery mirror for your personal posting history.
 
-All user data remains strictly in local memory and is visualised via interactive Chart.js widgets. Scans are 100% anonymous, safe, and require no account registration.
+All user data remains strictly in local browser memory and is visualized via interactive Chart.js widgets. Scans are 100% anonymous, safe, and require no account registration.
 
 ---
 
 ## ⚡ Key Features
 
+* 👻 **Recover Deleted Content (Primary Motive):** Retrieve and audit your own deleted posts, removed comments, and historical footprints that are no longer visible on your live Reddit profile.
 * 📇 **Dual-Fetch Pipeline:** Queries live Reddit JSON feeds and Arctic Shift historical search indices concurrently.
-* 👻 **Unmask Deleted/Hidden Items:** Auto-tags and highlights posts and comments that exist in the archives but are removed from the live Reddit profile.
-* 🛡️ **Antivirus-Safe JSONP Bypass:** Employs an obfuscated client-side JSONP fetch fallback to query Reddit directly from the user's residential IP, completely bypassing server-side WAF / CDN blocks without triggering local antivirus warnings.
-* 🖼️ **Inline Image & Video Previews:** Seamlessly renders post images and native HTML5 video players inside the dashboard feeds using an Express proxy fallback.
+* 🛡️ **Resilient Request Ingestion:** Employs a browser-based JSONP request model as a dynamic fallback, allowing the application to utilize the user's browser IP to bypass server-side datacenter blocks (WAF/CDN) transparently.
+* 🖼️ **Inline Image & Video Previews:** Renders post images and native HTML5 video players inside the dashboard feeds using an Express proxy fallback.
 * 📊 **Subreddit Frequency Chart:** Dynamic doughnut visualization displaying user activity distribution across subreddits.
 * 🖱️ **Header Filter & Sorting:** Quick text-matching queries and sorting filters (Newest, Oldest, Top Voted) running entirely client-side.
 * 📤 **Structured CSV Exports:** Download full timeline datasets with a single click.
@@ -103,11 +103,20 @@ Profilix is fully committed to ethical, non-invasive data auditing. The codebase
 
 ## 🤝 Contributing
 
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. 
+We welcome contributors! Profilix is an open-source project, and we actively encourage developers, researchers, and OSINT enthusiasts to collaborate.
 
+Whether you want to optimize API fetching, add new visualization modules, or squash bugs, here is how you can get involved:
+
+### 💡 Ideas for Contribution
+* **Enhanced Visualizations:** Add timeline heatmaps or activity grids (similar to GitHub contribution calendars).
+* **Additional Archives:** Integrate other archival databases (like Wayback Machine or local dumps).
+* **Performance Enhancements:** Improve state management and frontend caching.
+* **UI/UX Refinements:** Propose updates to the responsive layout, animations, or styling tokens.
+
+To get started:
 1. Review the [Code of Conduct](CODE_OF_CONDUCT.md).
-2. Follow the guidelines in our [Contributing Guide](CONTRIBUTING.md).
-3. Open a Pull Request with your feature enhancements!
+2. Read our [Contributing Guidelines](CONTRIBUTING.md) to understand the branch workflow.
+3. Check the open issues or create a new one to propose a feature.
 
 ---
 
