@@ -1,6 +1,13 @@
 <div align="center">
 
-# ✨ Profilix
+```text
+  _____            __ _ _ _      
+ |  __ \          / _(_) (_)     
+ | |__) | __ ___ | |_ _| |___  __
+ |  ___/ '__/ _ \|  _| | | \ \/ /
+ | |   | | | (_) | | | | | |>  < 
+ |_|   |_|  \___/|_| |_|_|_/_/\_\
+```
 
 **A premium, privacy-first dashboard for real-time Reddit profile auditing, timeline aggregation, and subreddit analytics.**
 
@@ -50,15 +57,11 @@ graph TD
     Client["Browser Frontend (app.js)"] -->|Scan/Audits| Proxy["Local Express Proxy (server.js)"]
     Proxy -->|1. Public JSON API / User-Agent curl| RedditAPI["Reddit Public Endpoints"]
     Proxy -->|2. Search API / User-Agent curl| ArcticShift["Arctic Shift Archive API"]
-    Client -->|Contact Form Submission| Web3Forms["Web3Forms API"]
-    Web3Forms -->|Forward Submission| Gmail["profilixsupport@gmail.com"]
     
     style Client fill:#ff2e93,stroke:#fff,stroke-width:2px,color:#fff
     style Proxy fill:#8c30f5,stroke:#fff,stroke-width:2px,color:#fff
     style RedditAPI fill:#120a22,stroke:#ff4d6a,stroke-width:1px,color:#f0f0f5
     style ArcticShift fill:#120a22,stroke:#00e5ff,stroke-width:1px,color:#f0f0f5
-    style Web3Forms fill:#160e2a,stroke:#6b1ac4,stroke-width:1px,color:#f0f0f5
-    style Gmail fill:#000,stroke:#fff,stroke-width:1px,color:#fff
 ```
 
 ---
