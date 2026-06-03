@@ -13,7 +13,7 @@ const state = {
 /* ===== REDDIT FETCH ===== */
 // JSONP-based fetch: uses the visitor's browser IP, bypasses server-side Reddit blocks.
 function redditJsonpFetch(url, timeoutMs) {
-  timeoutMs = timeoutMs || 12000;
+  timeoutMs = timeoutMs || 2500;
   return new Promise(function(resolve, reject) {
     var cbName = 'rcb_' + Date.now() + '_' + (Math.random() * 9999 | 0);
     var done = false;
@@ -167,6 +167,33 @@ async function searchUser() {
     } else if (aboutData && aboutData.error) {
       console.warn('Reddit error ' + aboutData.error + ': ' + aboutData.message);
     }
+    
+    // Arctic Shift Fallback for profile data if Reddit blocked us
+    if (!profileData) {
+      try {
+        const asRes = await fetch(`/api/arctic-shift/users/search?author=${username}`);
+        if (asRes.ok) {
+          const asData = await asRes.json();
+          if (asData && asData.data && asData.data.length > 0) {
+            const meta = asData.data[0]._meta;
+            profileData = {
+              name: asData.data[0].author || username,
+              icon_img: '',
+              created_utc: meta ? Math.min(meta.earliest_comment_at || Infinity, meta.earliest_post_at || Infinity) : null,
+              link_karma: meta ? meta.post_karma : 0,
+              comment_karma: meta ? meta.comment_karma : 0,
+              total_karma: meta ? meta.total_karma : 0,
+              is_gold: false,
+              is_mod: false
+            };
+            if (profileData.created_utc === Infinity) profileData.created_utc = null;
+          }
+        }
+      } catch (e) {
+        console.warn('Arctic Shift profile fallback failed:', e);
+      }
+    }
+
     if (!profileData) {
       profileData = {
         name: username,
