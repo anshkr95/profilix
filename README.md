@@ -11,6 +11,9 @@
 
 **A premium, privacy-first dashboard designed to help users reclaim their deleted Reddit content, audit their digital footprint, and analyze subreddit activity in real time.**
 
+🚀 **Live Deployment:** [profilix.onrender.com](https://profilix.onrender.com/)
+
+[![Live App](https://img.shields.io/badge/Live-On%20Render-blueviolet.svg)](https://profilix.onrender.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-green.svg)](https://nodejs.org/)
 [![Express](https://img.shields.io/badge/Express.js-4.x-lightgrey.svg)](https://expressjs.com/)
