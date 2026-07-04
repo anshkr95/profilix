@@ -11,7 +11,7 @@
 
 **A premium, privacy-first dashboard designed to help users reclaim their deleted Reddit content, audit their digital footprint, and analyze subreddit activity in real time.**
 
-🚀 **Live Deployment:** [profilix.onrender.com](https://profilix.onrender.com/)
+**Live Deployment:** [profilix.onrender.com](https://profilix.onrender.com/)
 
 [![Live App](https://img.shields.io/badge/Live-On%20Render-blueviolet.svg)](https://profilix.onrender.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -28,7 +28,7 @@
 
 ---
 
-## 🔍 Overview
+## Overview
 
 **Profilix** is a self-contained, open-source user analysis engine and self-auditing dashboard. Its **primary motive** is to empower users to reclaim, audit, and recover their own deleted posts, removed comments, and historical digital footprints.
 
@@ -38,20 +38,20 @@ All user data remains strictly in local browser memory and is visualized via int
 
 ---
 
-## ⚡ Key Features
+## Key Features
 
-* 👻 **Recover Deleted Content (Primary Motive):** Retrieve and audit your own deleted posts, removed comments, and historical footprints that are no longer visible on your live Reddit profile.
-* 📇 **Dual-Fetch Pipeline:** Queries live Reddit JSON feeds and Arctic Shift historical search indices concurrently.
-* 🛡️ **Resilient Request Ingestion:** Employs a browser-based JSONP request model as a dynamic fallback, allowing the application to utilize the user's browser IP to bypass server-side datacenter blocks (WAF/CDN) transparently.
-* 🖼️ **Inline Image & Video Previews:** Renders post images and native HTML5 video players inside the dashboard feeds using an Express proxy fallback.
-* 📊 **Subreddit Frequency Chart:** Dynamic doughnut visualization displaying user activity distribution across subreddits.
-* 🖱️ **Header Filter & Sorting:** Quick text-matching queries and sorting filters (Newest, Oldest, Top Voted) running entirely client-side.
-* 📤 **Structured CSV Exports:** Download full timeline datasets with a single click.
-* 🎨 **Rich Aesthetics:** Dark/light mode theme toggling, modern Outfit typography, glassmorphism card panels, interactive 3D perspective tilts, and smooth scroll triggers.
+* **Recover Deleted Content (Primary Motive):** Retrieve and audit your own deleted posts, removed comments, and historical footprints that are no longer visible on your live Reddit profile.
+* **Dual-Fetch Pipeline:** Queries live Reddit JSON feeds and Arctic Shift historical search indices concurrently.
+* ️ **Resilient Request Ingestion:** Employs a browser-based JSONP request model as a dynamic fallback, allowing the application to utilize the user's browser IP to bypass server-side datacenter blocks (WAF/CDN) transparently.
+* ️ **Inline Image & Video Previews:** Renders post images and native HTML5 video players inside the dashboard feeds using an Express proxy fallback.
+* **Subreddit Frequency Chart:** Dynamic doughnut visualization displaying user activity distribution across subreddits.
+* ️ **Header Filter & Sorting:** Quick text-matching queries and sorting filters (Newest, Oldest, Top Voted) running entirely client-side.
+* **Structured CSV Exports:** Download full timeline datasets with a single click.
+* **Rich Aesthetics:** Dark/light mode theme toggling, modern Outfit typography, glassmorphism card panels, interactive 3D perspective tilts, and smooth scroll triggers.
 
 ---
 
-## 🏗️ System Architecture
+## ️ System Architecture
 
 Profilix separates its presentation logic from API ingestion using an unauthenticated Node.js CORS proxy:
 
@@ -69,7 +69,7 @@ graph TD
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 You must have [Node.js](https://nodejs.org/) installed (v18.x or higher is recommended).
@@ -94,7 +94,7 @@ You must have [Node.js](https://nodejs.org/) installed (v18.x or higher is recom
 
 ---
 
-## ⚖️ Reddit TOS Compliance
+## ️ Reddit TOS Compliance
 
 Profilix is fully committed to ethical, non-invasive data auditing. The codebase adheres strictly to Reddit's developer rules and terms of service:
 * **No Authentication Bypassing:** We do not bypass login checkpoints, CAPTCHAs, or authentication firewalls. We do not access direct messages or private/moderator subreddits.
@@ -104,13 +104,13 @@ Profilix is fully committed to ethical, non-invasive data auditing. The codebase
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributors! Profilix is an open-source project, and we actively encourage developers, researchers, and OSINT enthusiasts to collaborate.
 
 Whether you want to optimize API fetching, add new visualization modules, or squash bugs, here is how you can get involved:
 
-### 💡 Ideas for Contribution
+### Ideas for Contribution
 * **Enhanced Visualizations:** Add timeline heatmaps or activity grids (similar to GitHub contribution calendars).
 * **Additional Archives:** Integrate other archival databases (like Wayback Machine or local dumps).
 * **Performance Enhancements:** Improve state management and frontend caching.
@@ -123,6 +123,6 @@ To get started:
 
 ---
 
-## 📄 License
+## License
 
 Distributed under the MIT License. See [LICENSE](LICENSE) for more information.

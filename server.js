@@ -146,5 +146,5 @@ app.get('/api/arctic-shift/*', async (req, res) => {
 
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Profilix running at http://localhost:${PORT}\n`);
+  console.log(`\nProfilix running at http://localhost:${PORT}\n`);
 });

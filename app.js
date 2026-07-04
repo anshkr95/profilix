@@ -134,6 +134,9 @@ async function searchUser() {
   const username = raw.replace(/^u\//, '').replace(/^\/u\//, '');
   if (!username) { showToast('Invalid username'); return; }
 
+  // Update input text with standard u/ prefix
+  document.getElementById('username-input').value = 'u/' + username;
+
   state.username = username;
   state.allPosts = [];
   state.allComments = [];
@@ -424,7 +427,7 @@ function renderProfile(data) {
     : (data.snoovatar_img && data.snoovatar_img.startsWith('http')) ? data.snoovatar_img : '';
   const avatar = _src
     ? `<img src="${escapeHtml(_src.split('?')[0])}" alt="avatar" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid rgba(255,255,255,0.1);" />`
-    : `<div class="profile-avatar">👤</div>`;
+    : `<div class="profile-avatar"></div>`;
 
   const joined = data.created_utc ? accountAge(data.created_utc) : 'Unknown';
   // Reddit uses different karma fields for admins vs normal users
@@ -442,8 +445,8 @@ function renderProfile(data) {
     <div class="profile-info">
       <div class="profile-name">
         <a href="https://reddit.com/user/${escapeHtml(data.name)}" target="_blank" rel="noopener">u/${escapeHtml(data.name)}</a>
-        ${isGold ? '<span class="verified-badge">⭐ Gold</span>' : ''}
-        ${isMod ? '<span class="verified-badge" style="background:#ff6b35;color:#000;">🛡️ Mod</span>' : ''}
+        ${isGold ? '<span class="verified-badge">Gold</span>' : ''}
+        ${isMod ? '<span class="verified-badge" style="background:#ff6b35;color:#000;">️ Mod</span>' : ''}
       </div>
       <div class="profile-meta">Account age: ${joined}</div>
       <div class="profile-stats">
@@ -472,7 +475,7 @@ function renderFeed(type) {
   if (items.length === 0) {
     feed.innerHTML = `
       <div class="empty-state">
-        <div class="empty-icon">${type === 'posts' ? '📭' : '🤐'}</div>
+        <div class="empty-icon">${type === 'posts' ? '' : ''}</div>
         <h3>No ${type} found</h3>
         <p>This user hasn't made any ${type} recently.</p>
       </div>`;
@@ -493,7 +496,7 @@ function renderItem(item, type, index) {
   const link = perm.startsWith('http') ? perm : `https://reddit.com${perm}`;
   
   const isHidden = item._is_archive_only || item.author === '[deleted]' || item.removed_by_category;
-  const hiddenBadge = isHidden ? `<span class="item-flair hidden-badge">👻 Hidden/Deleted</span>` : '';
+  const hiddenBadge = isHidden ? `<span class="item-flair hidden-badge">Hidden/Deleted</span>` : '';
 
   if (type === 'posts') {
     const numComments = formatNum(item.num_comments || 0);
@@ -513,7 +516,8 @@ function renderItem(item, type, index) {
       }
     }
     
-    const flair = item.link_flair_text ? `<span class="item-flair">${escapeHtml(item.link_flair_text)}</span>` : '';
+    const flairText = item.link_flair_text ? formatFlairText(item.link_flair_text) : '';
+    const flair = flairText ? `<span class="item-flair text-flair">${escapeHtml(flairText)}</span>` : '';
     
     const isImage = item.post_hint === 'image' || (item.url && /\.(jpg|jpeg|png|gif|webp)$/i.test(item.url));
     const isVideo = item.is_video || (item.media && item.media.reddit_video);
@@ -547,18 +551,26 @@ function renderItem(item, type, index) {
           <a class="item-sub" href="https://reddit.com/r/${escapeHtml(sub)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">r/${escapeHtml(sub)}</a>
           ${hiddenBadge}
           ${flair}
-          ${isLink ? `<span class="item-flair" style="background:rgba(0,229,160,0.1);color:var(--accent);">🔗 Link</span>` : ''}
-          ${isImage ? `<span class="item-flair" style="background:rgba(255,107,53,0.1);color:var(--orange);">🖼️ Image</span>` : ''}
-          ${isVideo ? `<span class="item-flair" style="background:rgba(0,229,255,0.1);color:var(--cyan);">📹 Video</span>` : ''}
+          ${isLink ? `<span class="item-flair link-badge">Link</span>` : ''}
+          ${isImage ? `<span class="item-flair image-badge">Image</span>` : ''}
+          ${isVideo ? `<span class="item-flair video-badge">Video</span>` : ''}
           <span class="item-time">${time}</span>
         </div>
         <div class="item-title">${title}</div>
         ${bodyHtml}
         ${mediaHtml}
         <div class="item-footer">
-          <span class="item-stat upvote">⬆ ${score}</span>
-          <span class="item-stat comments">💬 ${numComments}</span>
-          <button class="copy-btn" title="Copy Link" onclick="event.stopPropagation(); navigator.clipboard.writeText('${link}'); showToast('Link copied!');">📋</button>
+          <span class="item-stat upvote">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="18 15 12 9 6 15"/></svg>
+            ${score}
+          </span>
+          <span class="item-stat comments">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            ${numComments}
+          </span>
+          <button class="copy-btn" title="Copy Link" onclick="event.stopPropagation(); navigator.clipboard.writeText('${link}'); showToast('Link copied!');">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+          </button>
           <a class="item-link-btn" href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View →</a>
         </div>
       </div>`;
@@ -587,11 +599,16 @@ function renderItem(item, type, index) {
           ${hiddenBadge}
           <span class="item-time">${time}</span>
         </div>
-        ${context ? `<div class="item-title" style="font-size:0.85rem;color:var(--text2);font-weight:500;margin-bottom:6px;">📌 ${context}${item.link_title && item.link_title.length > 80 ? '…' : ''}</div>` : ''}
+        ${context ? `<div class="item-title" style="font-size:0.85rem;color:var(--text2);font-weight:500;margin-bottom:6px;">${context}${item.link_title && item.link_title.length > 80 ? '…' : ''}</div>` : ''}
         ${bodyHtml}
         <div class="item-footer">
-          <span class="item-stat upvote">⬆ ${score}</span>
-          <button class="copy-btn" title="Copy Link" onclick="event.stopPropagation(); navigator.clipboard.writeText('${link}'); showToast('Link copied!');">📋</button>
+          <span class="item-stat upvote">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="18 15 12 9 6 15"/></svg>
+            ${score}
+          </span>
+          <button class="copy-btn" title="Copy Link" onclick="event.stopPropagation(); navigator.clipboard.writeText('${link}'); showToast('Link copied!');">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+          </button>
           <a class="item-link-btn" href="${link}" target="_blank" rel="noopener" onclick="event.stopPropagation()">View →</a>
         </div>
       </div>`;
@@ -720,8 +737,15 @@ function toggleTheme() {
 }
 
 function updateThemeIcon(theme) {
-  const icon = document.querySelector('.theme-icon');
-  icon.textContent = theme === 'dark' ? '🌙' : '☀️';
+  const label = document.querySelector('.skeuo-label');
+  if (label) {
+    label.textContent = theme === 'dark' ? 'DARK' : 'LIGHT';
+  }
+}
+
+function formatFlairText(text) {
+  if (!text) return '';
+  return text.replace(/:[a-zA-Z0-9_\-+]+:\s*/g, '').trim();
 }
 
 initTheme();
@@ -811,7 +835,7 @@ function filterFeed() {
     if (!emptyMsg) {
       emptyMsg = document.createElement('div');
       emptyMsg.className = 'filter-empty-msg';
-      emptyMsg.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text3); font-weight: bold;">No matching items found. 👻</div>';
+      emptyMsg.innerHTML = '<div style="text-align:center; padding: 2rem; color: var(--text3); font-weight: bold;">No matching items found. </div>';
       feed.appendChild(emptyMsg);
     }
     emptyMsg.style.display = 'block';
@@ -859,7 +883,7 @@ function updateChart() {
 
   // Get current theme color
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-  const textColor = isLight ? '#1a1525' : '#f0f0f5';
+  const textColor = isLight ? '#030712' : '#ffffff';
 
   const isMobile = window.innerWidth <= 768;
 
@@ -871,11 +895,12 @@ function updateChart() {
         label: 'Activity',
         data: data,
         backgroundColor: [
-          '#ff2e93', // accent
-          '#00e5ff', // cyan
-          '#8c30f5', // violet
-          '#ff4d6a', // red
-          '#ffaa00'
+          '#0062ff', // Electric Blue
+          '#00e5ff', // Cyan
+          '#7f00ff', // Purple
+          '#30d158', // Green
+          '#ff3b30', // Red
+          '#00b8ff'  // Deep Cyan
         ],
         borderWidth: 0,
         hoverOffset: 10
@@ -937,7 +962,7 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const btn = document.getElementById('contact-submit-btn');
       const originalText = btn.textContent;
-      btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;margin-right:8px;">⏳</span> Sending...';
+      btn.innerHTML = '<span style="display:inline-block;animation:spin 1s linear infinite;margin-right:8px;"></span> Sending...';
       btn.disabled = true;
 
       try {
@@ -951,7 +976,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const data = await response.json();
         if (data.success) {
-          showToast('Message sent successfully! 🚀');
+          showToast('Message sent successfully! ');
           contactForm.reset();
         } else {
           showToast(data.message || 'Failed to send message.');
